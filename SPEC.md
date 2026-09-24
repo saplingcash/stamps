@@ -52,7 +52,7 @@ block time `t`, such that all of the following hold:
    `amount` is the **burned** amount (coin base units) and `payout` is the **harvested** amount (ZEC base
    units).
 4. **R4.** Exactly one top-level instruction of `T` invokes the SPL Memo program
-   `MemoSq4gqABAXKb96qnH8TzSNvK6oKvXYRvpKnwLdpq`. Its data is the UTF-8 string
+   `MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`. Its data is the UTF-8 string
    `sapling-stamp:1:<address>`, where `<address>` is one or more characters with no whitespace.
 5. **R5.** Exactly one top-level instruction of `T` is an SPL Token `TransferChecked` (data byte `0` =
    `12`, then u64 LE amount, then u8 decimals = 8) invoking `solana.tokenProgram`, with accounts:

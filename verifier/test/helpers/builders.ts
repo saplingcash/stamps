@@ -80,7 +80,7 @@ export function stampTx(issuer: Uint8Array, sig: string, burned: bigint, harvest
 export const key = () => base58.encode(randomBytes(32));
 export const sig = () => base58.encode(randomBytes(64));
 
-export const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9ss623VQ5DA";
+export const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 export function testParams(over: Partial<Params> = {}, issuers: string[] = []): Params {
   return {
     solana: { programId: key(), zecMint: key(), tokenProgram: TOKEN_PROGRAM, feeAccount: key(), feeOwner: key() },

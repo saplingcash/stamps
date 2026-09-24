@@ -3,7 +3,7 @@
   "solana": {
     "programId": "A9zFnNZpVjBbcE1SAPY92Z6H7WhicysLNPYPpDz15UxF",
     "zecMint": "A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS",
-    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9ss623VQ5DA",
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
     "feeAccount": "",
     "feeOwner": ""
   },

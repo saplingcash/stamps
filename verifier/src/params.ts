@@ -21,7 +21,7 @@ export interface Params {
   refundAfterDays: number;
 }
 
-export const MEMO_PROGRAM = "MemoSq4gqABAXKb96qnH8TzSNvK6oKvXYRvpKnwLdpq";
+export const MEMO_PROGRAM = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 export const REDEEM_DISCRIMINATOR = Uint8Array.from([0xb8, 0x0c, 0x56, 0x95, 0x46, 0xc4, 0x61, 0xe1]);
 export const REDEEMED_EVENT_DISCRIMINATOR = Uint8Array.from([0x0e, 0x1d, 0xb7, 0x47, 0x1f, 0xa5, 0x6b, 0x26]);
 export const REQUEST_MEMO_PREFIX = "sapling-stamp:1:";
