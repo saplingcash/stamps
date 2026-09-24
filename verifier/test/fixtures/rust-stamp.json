@@ -1,0 +1,15 @@
+{
+  "_comment": "A stamp built and signed by stamper-core (Rust) with a fixed public test key (32 bytes of 0x42; never a real key), for the record and address below. The TypeScript verifier must accept it.",
+  "issuerAddress": "tmBcdW6aPKVWJnJKYug6cjS5uPgDu5gZkWw",
+  "request": {
+    "signature": "PiyTooFp2mLx3j88A2NdB14Pio1VepVn2zsPStFwvZdNeH8hjFcMBfLYqieohw7MP6REr1TNAP3M3uWcGabH4ZY",
+    "address": "tmXxKMj2mUrtptGaY7hWGa8ttJBgQFctKNq",
+    "burned": "2000000000000",
+    "harvested": "42000000",
+    "ticker": "OWL"
+  },
+  "txid": "e4b4ea27ffe919421e6d84da21b6a3e25d39a48fc17cd0be8d4ffea7ad96ffb0",
+  "txHex": "050000800a27a7265b16a537000000006ef5420001a5410b05f60ec3a377159a81119b98114399d4424e18964ba76317b7cb5e9d86010000006a47304402201f2d6e34dcf693337d48ff248319f11c30cde8c22b34a6e0cf2630bb5641e96a022049526e1a241d35616d8e2c1393f980d25eac3509f077016aaf185ba5a50ab0d401210324653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1cffffffff030000000000000000366a3453504c4701bb4632cbd9dfc6c8037b324ead09d305f25c60e200204aa9d101000080de800200000000034f574c0000000000000022020000000000001976a914f3f6f18ce55b08b89df11616d3b5e641fd02292888acfef10e00000000001976a91414db4138d56a2ecfb10881a9be394d9f321985b288ac000000",
+  "fee": 20000,
+  "change": 979454
+}

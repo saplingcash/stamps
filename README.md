@@ -11,6 +11,10 @@ This repository holds what anyone needs to check the stamps without trusting Sap
   that decide which Zcash transactions are valid stamps;
 - [`verifier/`](verifier): a command-line tool that rebuilds the full set of stamps from a Solana RPC and
   a Zcash node of your choice, and checks the invariant;
+- [`stamper-core/`](stamper-core): the Rust library and `stamper` tool that build and sign the Zcash
+  transactions carrying stamps (v5, transparent, ZIP 244 signatures, ZIP 317 fees). The consensus branch
+  is passed in from a node at build time, never assumed. It has no network code, and the issuer key never
+  leaves it: `stamper keygen` writes it (mode 0600) and prints only its address;
 - [`test-vectors/`](test-vectors) and [`params/`](params): record vectors and the deployment parameters
   (`mainnet.json`; `local.json` is a template for tests against a local Solana validator and Zcash
   testnet, since the vault program is deployed on no public Solana test network).
@@ -35,9 +39,13 @@ holds, 1 when it does not, and 2 when a chain could not be read. `--json` prints
 ## Tests
 
 ```bash
-cd verifier
-npm test
+cd verifier && npm test
+cd stamper-core && cargo test
 ```
+
+`stamper-core`'s tests check its transaction ids and signature hashes against librustzcash (the reference
+implementation) on every consensus branch librustzcash knows, check the branch switch for NU7, and the
+verifier checks a stamp that `stamper-core` built and signed.
 
 ## Status
 
