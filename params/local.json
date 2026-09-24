@@ -1,5 +1,5 @@
 {
-  "_comment": "Test deployment: a Solana test cluster and Zcash testnet. Filled in when the test stamper and fee account exist.",
+  "_comment": "For tests only: a local Solana validator (solana-test-validator) that loads the sapling_vault program at its mainnet id and a copy of the ZEC mint account, paired with Zcash testnet. The vault program is not deployed on any public Solana test network. Fill in the fee account, its owner and the issuer of your own test setup.",
   "solana": {
     "programId": "A9zFnNZpVjBbcE1SAPY92Z6H7WhicysLNPYPpDz15UxF",
     "zecMint": "A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS",

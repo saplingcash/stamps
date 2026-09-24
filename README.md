@@ -11,7 +11,9 @@ This repository holds what anyone needs to check the stamps without trusting Sap
   that decide which Zcash transactions are valid stamps;
 - [`verifier/`](verifier): a command-line tool that rebuilds the full set of stamps from a Solana RPC and
   a Zcash node of your choice, and checks the invariant;
-- [`test-vectors/`](test-vectors) and [`params/`](params): record vectors and the deployment parameters.
+- [`test-vectors/`](test-vectors) and [`params/`](params): record vectors and the deployment parameters
+  (`mainnet.json`; `local.json` is a template for tests against a local Solana validator and Zcash
+  testnet, since the vault program is deployed on no public Solana test network).
 
 A stamp is a record and 546 zatoshi. It is not a token, it confers no claim on any asset, and it carries
 no promise of value or of any future conversion.
