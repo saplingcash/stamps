@@ -141,8 +141,13 @@ A stamp candidate `Z` is a **valid stamp** of request `R` if:
 2. **V2.** The record's burned equals `R`'s burned, and its harvested equals `R`'s harvested.
 3. **V3.** `R` is deliverable, and `Z` has an output paying at least 546 zatoshi to `R`'s destination
    script.
-4. **V4.** Among the candidates satisfying V1–V3 for `R`, `Z` comes first in chain order: lowest block
-   height, then lowest position in its block.
+4. **V4.** Among the candidates satisfying V1–V3 and V5 for `R`, `Z` comes first in chain order: lowest
+   block height, then lowest position in its block.
+5. **V5.** `R` has no refund (§5) whose Solana block time is earlier than the time of `Z`'s block. Once
+   a request is refunded, no later stamp can make it stamped, so its state cannot be changed by whoever
+   holds an issuer key afterwards. (The two chains' clocks are compared as they are; a stamp mined before
+   its request's refund is still valid, and the request is then both stamped and refunded, which breaks
+   the invariant of §7.)
 
 A stamp's **id** is its Zcash txid. Its **received** amount is `R`'s harvested minus `R`'s fee paid.
 

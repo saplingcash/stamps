@@ -1,0 +1,4 @@
+[toolchain]
+# the compiler the signer is built and tested with (the stamper image uses the same version)
+channel = "1.98.1"
+profile = "minimal"

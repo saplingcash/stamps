@@ -18,6 +18,8 @@ export interface ZcashTxInfo {
   index: number;
   confirmations: number;
   rawHex: string;
+  /** its block's time (unix seconds), for V5; a reader that cannot give it leaves V5 unchecked */
+  time?: number;
 }
 
 export interface Stamp {
@@ -63,6 +65,19 @@ export function buildLedger(p: Params, requests: Request[], refunds: Refund[], z
     const h = bytesToHex(signatureHash(base58.decode(r.signature)));
     byHash.set(h, [...(byHash.get(h) ?? []), r]);
   }
+
+  // refunds that match their request exactly (SPEC.md §5), the earliest per request
+  const reqBySig = new Map(requests.map((r) => [r.signature, r]));
+  const refundedAt = new Map<string, number>();
+  let refundedAmount = 0n;
+  for (const f of [...refunds].sort((a, b) => a.blockTime - b.blockTime)) {
+    const r = reqBySig.get(f.requestSignature);
+    if (!r || f.to !== r.source || f.amount !== r.feePaid) continue;
+    if (refundedAt.has(r.signature)) continue;
+    refundedAt.set(r.signature, f.blockTime);
+    refundedAmount += f.amount;
+  }
+  const refunded = new Set(refundedAt.keys());
 
   // candidates in chain order (V4)
   const ordered = [...zcashTxs].sort((a, b) => (a.height ?? Infinity) - (b.height ?? Infinity) || a.index - b.index);
@@ -123,6 +138,11 @@ export function buildLedger(p: Params, requests: Request[], refunds: Refund[], z
       rejected.push({ txid: z.txid, reason: "V3: no output of at least 546 zatoshi to the request's address" });
       continue;
     }
+    const refundTime = refundedAt.get(r.signature);
+    if (refundTime !== undefined && z.time !== undefined && z.time > refundTime) {
+      rejected.push({ txid: z.txid, reason: "V5: mined after the request was refunded" });
+      continue;
+    }
     if (stampOf.has(r.signature)) {
       rejected.push({ txid: z.txid, reason: `V4: a duplicate; the stamp of this request is ${stampOf.get(r.signature)!.id}` });
       continue;
@@ -130,17 +150,6 @@ export function buildLedger(p: Params, requests: Request[], refunds: Refund[], z
     stampOf.set(r.signature, { id: z.txid, height: z.height, request: r.signature, mint: r.mint, ticker: rec.ticker, burned: r.burned, harvested: r.harvested, fee: r.feePaid, received: r.harvested - r.feePaid, address: r.address });
   }
 
-  // refunds that match their request exactly (SPEC.md §5)
-  const reqBySig = new Map(requests.map((r) => [r.signature, r]));
-  const refunded = new Set<string>();
-  let refundedAmount = 0n;
-  for (const f of refunds) {
-    const r = reqBySig.get(f.requestSignature);
-    if (!r || f.to !== r.source || f.amount !== r.feePaid) continue;
-    if (refunded.has(r.signature)) continue;
-    refunded.add(r.signature);
-    refundedAmount += f.amount;
-  }
 
   const unresolved = new Set(unresolvedRequests);
   const problems: string[] = [];

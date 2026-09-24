@@ -23,6 +23,8 @@ describe("a stamp from the Rust stamper", () => {
   });
   it("has the txid the Rust side computed (ZIP 244, checked there against librustzcash)", () => {
     expect(txidTransparentOnly(hexToBytes(fx.txHex))).toBe(fx.txid);
+    // anything after the three empty bundle counts is not a transparent-only transaction
+    expect(txidTransparentOnly(hexToBytes(fx.txHex + "00"))).toBeNull();
   });
   it("is a valid stamp of its request", () => {
     const p = testParams({}, [fx.issuerAddress]);

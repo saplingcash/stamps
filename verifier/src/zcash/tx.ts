@@ -26,6 +26,8 @@ export interface TransparentTx {
   expiryHeight: number;
   inputs: TxIn[];
   outputs: TxOut[];
+  /** the offset just past the transparent bundle */
+  end: number;
 }
 
 class Reader {
@@ -106,7 +108,7 @@ export function parseTransparent(raw: Uint8Array): TransparentTx {
     if (value < 0n) throw new Error("negative output value");
     outputs.push({ value, script: r.bytes(r.compactSize()) });
   }
-  return { version, versionGroupId, consensusBranchId, lockTime, expiryHeight, inputs, outputs };
+  return { version, versionGroupId, consensusBranchId, lockTime, expiryHeight, inputs, outputs, end: r.off };
 }
 
 /** The pushes of a push-only script, or null if it contains anything but pushes. */
@@ -169,8 +171,9 @@ export function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
  */
 export function txidTransparentOnly(raw: Uint8Array): string | null {
   const tx = parseTransparent(raw);
-  // the three empty-bundle counts after the transparent part
-  if (raw.length < 3 || raw[raw.length - 1] !== 0 || raw[raw.length - 2] !== 0 || raw[raw.length - 3] !== 0) return null;
+  // exactly the three empty-bundle counts (Sapling spends, Sapling outputs, Orchard actions) after the
+  // transparent part, and nothing else
+  if (tx.end !== raw.length - 3 || raw[raw.length - 1] !== 0 || raw[raw.length - 2] !== 0 || raw[raw.length - 3] !== 0) return null;
   const le32 = (n: number) => Uint8Array.from([n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff]);
   const cat = (...parts: Uint8Array[]) => {
     const out = new Uint8Array(parts.reduce((a, p) => a + p.length, 0));

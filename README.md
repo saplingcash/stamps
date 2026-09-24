@@ -28,7 +28,7 @@ Node.js 20 or later.
 
 ```bash
 cd verifier
-npm install
+npm ci
 npx tsx src/cli.ts --params ../params/mainnet.json --solana <Solana RPC URL> --zcash <Zebra JSON-RPC URL>
 ```
 
@@ -39,9 +39,13 @@ holds, 1 when it does not, and 2 when a chain could not be read. `--json` prints
 ## Tests
 
 ```bash
-cd verifier && npm test
-cd stamper-core && cargo test
+cd verifier && npm ci && npm test
+cd stamper-core && cargo test --locked
 ```
+
+`npm ci` installs exactly the versions in `package-lock.json` (tsx, which runs the tool, among them);
+`stamper-core/rust-toolchain.toml` pins the Rust compiler and `Cargo.lock` the crates. The same checks and
+a secret scan of the full history run on every push (`.github/workflows/checks.yml`).
 
 `stamper-core`'s tests check its transaction ids and signature hashes against librustzcash (the reference
 implementation) on every consensus branch librustzcash knows, check the branch switch for NU7, and the

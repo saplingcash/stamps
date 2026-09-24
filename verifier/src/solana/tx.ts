@@ -33,6 +33,8 @@ export interface Request {
 export interface Refund {
   signature: string;
   slot: number;
+  /** its block time (unix seconds): a stamp mined after it is not valid (SPEC.md §6 V5) */
+  blockTime: number;
   /** the request it refunds */
   requestSignature: string;
   to: string;
@@ -126,7 +128,7 @@ export function classify(tx: RpcTransaction, p: Params): Classified {
     if (out.length !== 1) return { kind: "other", reason: "refund memo without exactly one transfer from the fee account" };
     const t = out[0]!;
     if (t.mint !== p.solana.zecMint || t.authority !== p.solana.feeOwner) return { kind: "other", reason: "refund transfer has the wrong mint or authority" };
-    return { kind: "refund", refund: { signature, slot: tx.slot, requestSignature: refundMemo.slice(REFUND_MEMO_PREFIX.length), to: t.destination, amount: t.amount } };
+    return { kind: "refund", refund: { signature, slot: tx.slot, blockTime: tx.blockTime, requestSignature: refundMemo.slice(REFUND_MEMO_PREFIX.length), to: t.destination, amount: t.amount } };
   }
 
   // a request (SPEC.md §2)

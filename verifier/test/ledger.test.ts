@@ -137,6 +137,19 @@ describe("states and the invariant (SPEC §7)", () => {
     const l = buildLedger(p, [req], [refundOf(f)], [z("aa", stampTx(issuer.pubkey, req.signature, 7n, 500_000n, dest))], NOW);
     expect(l.invariant).toMatchObject({ ok: false, problems: [expect.stringMatching(/both stamped and refunded/)] });
   });
+  it("V5: a stamp mined after its request was refunded is not valid; the request stays refunded", () => {
+    const { p, dest, req } = setup();
+    const f = refundOf(classify(refundTx(p, req.signature, req.source, req.feePaid), p));
+    const after = { ...z("aa", stampTx(issuer.pubkey, req.signature, 7n, 500_000n, dest)), time: f.blockTime + 60 };
+    const l = buildLedger(p, [req], [f], [after], NOW);
+    expect(l.stamps).toEqual([]);
+    expect(l.rejected).toEqual([{ txid: "aa", reason: "V5: mined after the request was refunded" }]);
+    expect(l.states[0]!.state).toBe("refunded");
+    expect(l.invariant.ok).toBe(true);
+    // mined before the refund, it is valid, and the request is both stamped and refunded
+    const before = { ...after, time: f.blockTime - 60 };
+    expect(buildLedger(p, [req], [f], [before], NOW).invariant).toMatchObject({ ok: false, problems: [expect.stringMatching(/both stamped and refunded/)] });
+  });
   it("an unreadable Solana transaction is reported unresolved, never guessed", () => {
     const { p } = setup();
     const l = buildLedger(p, [], [], [], NOW, ["someSignature"]);
