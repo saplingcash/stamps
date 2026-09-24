@@ -53,8 +53,9 @@ verifier checks a stamp that `stamper-core` built and signed.
 
 ## Status
 
-Draft. The format and rules are being tested on Zcash testnet; the mainnet parameters are filled in
-when the stamper's addresses exist.
+Version 1. The rules were tested on Zcash testnet and a local Solana validator running the real programs,
+and reviewed independently. `params/mainnet.json` names the mainnet fee account, its owner and the
+issuer; stamps start with Sapling's launch.
 
 ## License
 

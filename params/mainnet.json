@@ -1,13 +1,27 @@
 {
-  "_comment": "Mainnet: Solana mainnet-beta and Zcash mainnet. The fee account, its owner and the issuer are filled in when they exist; until then the verifier refuses this file.",
+  "_comment": "Mainnet: Solana mainnet-beta and Zcash mainnet. The fee account is the ZEC token account of the fee wallet (feeOwner), which signs refunds; the issuer is the stamper's P2PKH address from the height its key was made.",
   "solana": {
     "programId": "A9zFnNZpVjBbcE1SAPY92Z6H7WhicysLNPYPpDz15UxF",
     "zecMint": "A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS",
     "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-    "feeAccount": "",
-    "feeOwner": ""
+    "feeAccount": "DuoFtoXTvyteSBGqbHNpgcamHeVQ5EqnBqEupZxFfn1n",
+    "feeOwner": "7h4eQf5Sw6UHmGJ3XfN2m1cuN2aSXuRg8ouPvxpG1muG"
   },
-  "zcash": { "network": "mainnet", "issuers": [], "confirmations": 10 },
-  "fees": [{ "from": 0, "amount": "40000" }],
+  "zcash": {
+    "network": "mainnet",
+    "issuers": [
+      {
+        "address": "t1bBCoaVRECAc8Y8E5BRrhDPQ36nt27kX29",
+        "fromHeight": 3494900
+      }
+    ],
+    "confirmations": 10
+  },
+  "fees": [
+    {
+      "from": 0,
+      "amount": "40000"
+    }
+  ],
   "refundAfterDays": 7
 }
