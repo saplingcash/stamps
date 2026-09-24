@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { buildLedger } from "../src/ledger.ts";
-import { parseTransparent, hexToBytes } from "../src/zcash/tx.ts";
+import { parseTransparent, hexToBytes, txidTransparentOnly } from "../src/zcash/tx.ts";
 import { testParams } from "./helpers/builders.ts";
 import type { Request } from "../src/solana/tx.ts";
 
@@ -20,6 +20,9 @@ describe("a stamp from the Rust stamper", () => {
     expect(t.consensusBranchId).toBe(0x37a5165b);
     expect(t.outputs.map((o) => o.value)).toEqual([0n, 546n, BigInt(1_000_000 - 546 - fx.fee)]);
     expect(fx.fee).toBe(20_000);
+  });
+  it("has the txid the Rust side computed (ZIP 244, checked there against librustzcash)", () => {
+    expect(txidTransparentOnly(hexToBytes(fx.txHex))).toBe(fx.txid);
   });
   it("is a valid stamp of its request", () => {
     const p = testParams({}, [fx.issuerAddress]);

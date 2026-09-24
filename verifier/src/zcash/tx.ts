@@ -4,6 +4,7 @@
  */
 import { sha256 } from "@noble/hashes/sha2";
 import { ripemd160 } from "@noble/hashes/legacy";
+import { blake2b } from "@noble/hashes/blake2b";
 
 export const V5_VERSION_GROUP_ID = 0x26a7270a;
 
@@ -160,4 +161,42 @@ export function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
   return true;
+}
+
+/**
+ * The txid (ZIP 244) of a transparent-only v5 transaction, as nodes display it (byte-reversed hex), or
+ * null if the transaction has Sapling or Orchard parts (those are never stamps).
+ */
+export function txidTransparentOnly(raw: Uint8Array): string | null {
+  const tx = parseTransparent(raw);
+  // the three empty-bundle counts after the transparent part
+  if (raw.length < 3 || raw[raw.length - 1] !== 0 || raw[raw.length - 2] !== 0 || raw[raw.length - 3] !== 0) return null;
+  const le32 = (n: number) => Uint8Array.from([n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff]);
+  const cat = (...parts: Uint8Array[]) => {
+    const out = new Uint8Array(parts.reduce((a, p) => a + p.length, 0));
+    let o = 0;
+    for (const p of parts) {
+      out.set(p, o);
+      o += p.length;
+    }
+    return out;
+  };
+  const h = (personal: string | Uint8Array, data: Uint8Array) => blake2b(data, { dkLen: 32, personalization: typeof personal === "string" ? new TextEncoder().encode(personal) : personal });
+  const cs = (n: number) => (n < 0xfd ? Uint8Array.from([n]) : Uint8Array.from([0xfd, n & 0xff, n >> 8]));
+  const header = h("ZTxIdHeadersHash", cat(le32(((tx.version | 0x80000000) >>> 0)), le32(tx.versionGroupId), le32(tx.consensusBranchId), le32(tx.lockTime), le32(tx.expiryHeight)));
+  let transparent: Uint8Array;
+  if (!tx.inputs.length && !tx.outputs.length) transparent = h("ZTxIdTranspaHash", new Uint8Array());
+  else {
+    const prevouts = h("ZTxIdPrevoutHash", cat(...tx.inputs.map((i) => cat(i.prevTxid, le32(i.prevIndex)))));
+    const sequences = h("ZTxIdSequencHash", cat(...tx.inputs.map((i) => le32(i.sequence))));
+    const outputs = h("ZTxIdOutputsHash", cat(...tx.outputs.map((o) => {
+      const v = new Uint8Array(8);
+      new DataView(v.buffer).setBigInt64(0, o.value, true);
+      return cat(v, cs(o.script.length), o.script);
+    })));
+    transparent = h("ZTxIdTranspaHash", cat(prevouts, sequences, outputs));
+  }
+  const personal = cat(new TextEncoder().encode("ZcashTxHash_"), le32(tx.consensusBranchId));
+  const id = h(personal, cat(header, transparent, h("ZTxIdSaplingHash", new Uint8Array()), h("ZTxIdOrchardHash", new Uint8Array())));
+  return bytesToHex(id.slice().reverse());
 }
