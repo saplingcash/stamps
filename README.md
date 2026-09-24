@@ -1,0 +1,47 @@
+# Sapling stamps
+
+A **stamp** is a permanent record, on Zcash, of a harvest on [Sapling](https://sapling.cash): someone
+burned a Sapling coin on Solana and received ZEC from that coin's roots. The stamp records the amount
+burned and the ZEC harvested, cites the Solana transaction, and sends 546 zatoshi to the Zcash address
+the harvester chose.
+
+This repository holds what anyone needs to check the stamps without trusting Sapling:
+
+- [`SPEC.md`](SPEC.md): how a harvest asks for a stamp, the 52-byte record a stamp carries, and the rules
+  that decide which Zcash transactions are valid stamps;
+- [`verifier/`](verifier): a command-line tool that rebuilds the full set of stamps from a Solana RPC and
+  a Zcash node of your choice, and checks the invariant;
+- [`test-vectors/`](test-vectors) and [`params/`](params): record vectors and the deployment parameters.
+
+A stamp is a record and 546 zatoshi. It is not a token, it confers no claim on any asset, and it carries
+no promise of value or of any future conversion.
+
+## Run the verifier
+
+Node.js 20 or later.
+
+```bash
+cd verifier
+npm install
+npx tsx src/cli.ts --params ../params/mainnet.json --solana <Solana RPC URL> --zcash <Zebra JSON-RPC URL>
+```
+
+The Zcash node must serve the zcashd-compatible methods `getblockcount`, `getaddresstxids`,
+`getrawtransaction` and `getblock` (Zebra does). The tool only reads; it exits 0 when the invariant
+holds, 1 when it does not, and 2 when a chain could not be read. `--json` prints the full result.
+
+## Tests
+
+```bash
+cd verifier
+npm test
+```
+
+## Status
+
+Draft. The format and rules are being tested on Zcash testnet; the mainnet parameters are filled in
+when the stamper's addresses exist.
+
+## License
+
+Apache License 2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE).

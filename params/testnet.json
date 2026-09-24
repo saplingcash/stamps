@@ -1,0 +1,13 @@
+{
+  "_comment": "Test deployment: a Solana test cluster and Zcash testnet. Filled in when the test stamper and fee account exist.",
+  "solana": {
+    "programId": "A9zFnNZpVjBbcE1SAPY92Z6H7WhicysLNPYPpDz15UxF",
+    "zecMint": "A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS",
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9ss623VQ5DA",
+    "feeAccount": "",
+    "feeOwner": ""
+  },
+  "zcash": { "network": "testnet", "issuers": [], "confirmations": 10 },
+  "fees": [{ "from": 0, "amount": "40000" }],
+  "refundAfterDays": 7
+}

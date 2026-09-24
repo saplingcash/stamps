@@ -1,0 +1,24 @@
+{
+  "name": "@saplingcash/stamps-verifier",
+  "version": "0.1.0",
+  "description": "Rebuilds the set of Sapling stamps from Solana and Zcash, by the rules in SPEC.md.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": { "stamps-verify": "./src/cli.ts" },
+  "scripts": {
+    "verify": "tsx src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@noble/hashes": "^1.8.0",
+    "@scure/base": "^1.2.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.2.0"
+  }
+}

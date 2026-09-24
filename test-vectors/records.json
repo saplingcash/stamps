@@ -1,0 +1,41 @@
+{
+  "_comment": "SPLG v1 records (SPEC.md §3). `signature` is a Solana signature in base58; `script` is the full OP_RETURN scriptPubKey.",
+  "vectors": [
+    {
+      "description": "a typical harvest",
+      "signature": "4NGhBoJB1PgQRzt3KojYNefba7d6CdnCyrWYfeBy11qSwfYo8Y6YXnU7YwEZkWgpKABeg99HffUnHcvrRkwBJjyj",
+      "burned": "2000000000000",
+      "harvested": "42000000",
+      "ticker": "OWL",
+      "record": "53504c470186ea9bf9fd7cc0a4aba25d82fe48c784207b1af300204aa9d101000080de800200000000034f574c00000000000000",
+      "script": "6a3453504c470186ea9bf9fd7cc0a4aba25d82fe48c784207b1af300204aa9d101000080de800200000000034f574c00000000000000"
+    },
+    {
+      "description": "the largest amounts",
+      "signature": "2mJjcW4xiREtZPDiRFfNGLRm8jvJriVnzZPaTwmRGmZ5tSx3V3futuMNx4nNi9fHrjNK4JGt2u6mDHPVDPJFZUWJ",
+      "burned": "18446744073709551615",
+      "harvested": "18446744073709551615",
+      "ticker": "ABCDEFGHIJ",
+      "record": "53504c4701a464e7d4002384022789eb54a603f8d90b680471ffffffffffffffffffffffffffffffff0a4142434445464748494a",
+      "script": "6a3453504c4701a464e7d4002384022789eb54a603f8d90b680471ffffffffffffffffffffffffffffffff0a4142434445464748494a"
+    },
+    {
+      "description": "an empty ticker",
+      "signature": "KdSsMyJL6GbwYLk8LhrmooX7oTkEQB27PxEmuqzdB36SVS1pTQZD4wwiCtkWUXynRX2RJJhtn6cvxrYLg6sVu2M",
+      "burned": "1",
+      "harvested": "1",
+      "ticker": "",
+      "record": "53504c470125879cf94e426ea04917e20461b900d720a6e0c0010000000000000001000000000000000000000000000000000000",
+      "script": "6a3453504c470125879cf94e426ea04917e20461b900d720a6e0c0010000000000000001000000000000000000000000000000000000"
+    },
+    {
+      "description": "a ticker cut at 10 bytes on a character boundary",
+      "signature": "3uWzLhupf21RcH9cHYr8fhZq6tkg2izps4P3nd4FAJAWmfU8nMZZN66tHZ5XApPGUmHUeyb3dJs2y7sjTdtHebWr",
+      "burned": "123456789",
+      "harvested": "987654321",
+      "ticker": "ÄÄÄÄÄÄ",
+      "record": "53504c47015bf93bc49d52a7a91d0f78bf444070c169c665c015cd5b0700000000b168de3a000000000ac384c384c384c384c384",
+      "script": "6a3453504c47015bf93bc49d52a7a91d0f78bf444070c169c665c015cd5b0700000000b168de3a000000000ac384c384c384c384c384"
+    }
+  ]
+}

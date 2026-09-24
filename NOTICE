@@ -1,0 +1,9 @@
+Sapling stamps
+Copyright 2026 Sapling (sapling.cash)
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It includes, unmodified, test vectors from zcash-test-vectors
+(https://github.com/zcash/zcash-test-vectors), licensed under the Apache License,
+Version 2.0 or the MIT license, copyright the Electric Coin Company and contributors:
+verifier/test/fixtures/zcash-f4jumble.json and verifier/test/fixtures/zcash-unified-address.json.
