@@ -34,7 +34,9 @@ npx tsx src/cli.ts --params ../params/mainnet.json --solana <Solana RPC URL> --z
 
 The Zcash node must serve the zcashd-compatible methods `getblockcount`, `getaddresstxids`,
 `getrawtransaction` and `getblock` (Zebra does). The tool only reads; it exits 0 when the invariant
-holds, 1 when it does not, and 2 when a chain could not be read. `--json` prints the full result.
+holds, 1 when it does not, and 2 on an error (bad arguments, an unusable parameter file, or a chain that
+could not be read). Amounts are printed in ZEC; `--json` prints the full result, amounts in base units.
+`--help` lists the options.
 
 ## Tests
 

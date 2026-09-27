@@ -98,5 +98,10 @@ describe("the verifier against both chains' RPCs", () => {
     expect(out.totals.stamped).toBe(1);
     expect(out.stamps[0]!.received).toBe("860000");
     expect(out.invariant.ok).toBe(true);
+    // the same run, printed for a reader: amounts in ZEC
+    const text = (await promisify(execFile)(process.execPath, [tsx, join(__dirname, "..", "src", "cli.ts"), "--params", file, "--solana", url, "--zcash", url])).stdout;
+    expect(text).toMatch(/^requests 3: stamped 1, refunded 1, pending 1, overdue 0, unresolved 0\nfees paid 0\.00120000 ZEC, refunded 0\.00040000 ZEC\n/);
+    expect(text).toMatch(/harvested 0\.00900000 ZEC {2}fee 0\.00040000 ZEC {2}received 0\.00860000 ZEC/);
+    expect(text).toMatch(/invariant: OK\n$/);
   }, 60_000);
 });

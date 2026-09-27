@@ -30,6 +30,14 @@ export const POSTAGE_ZAT = 546n;
 
 /** Refuses parameter files that are incomplete (for example mainnet before its addresses exist). */
 export function checkParams(p: Params): string[] {
+  if (typeof p !== "object" || p === null || Array.isArray(p)) return ["the file is not a JSON object"];
+  const isObject = (v: unknown) => typeof v === "object" && v !== null && !Array.isArray(v);
+  const absent: string[] = [];
+  if (!isObject(p.solana)) absent.push("solana is missing");
+  if (!isObject(p.zcash)) absent.push("zcash is missing");
+  else if (!Array.isArray(p.zcash.issuers)) absent.push("zcash.issuers is missing");
+  if (!Array.isArray(p.fees)) absent.push("fees is missing");
+  if (absent.length) return absent;
   const problems: string[] = [];
   const b58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
   for (const k of ["programId", "zecMint", "tokenProgram", "feeAccount", "feeOwner"] as const) if (!b58.test(p.solana[k] ?? "")) problems.push(`solana.${k} is not set`);
