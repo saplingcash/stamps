@@ -43,4 +43,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # rust-toolchain.toml pins the compiler; Cargo.lock the crates
-      - run: cargo test --locked
+      - run: cargo test --locked --features private
+
+  # the committed WebAssembly must be exactly what this source builds (stamp-proof-wasm/build.sh)
+  wasm:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: wasm-bindgen-cli at the Cargo.lock version
+        working-directory: stamp-proof-wasm
+        run: cargo install wasm-bindgen-cli --locked --version "$(awk '/^name = "wasm-bindgen"$/{getline; gsub(/version = |"/, ""); print}' Cargo.lock)"
+      - run: ./stamp-proof-wasm/build.sh --check

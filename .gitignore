@@ -4,7 +4,7 @@ dist/
 .env
 .env.*
 target/
-# keys the CLI writes, and anything key-like (review SY-16)
+# keys the CLI writes, and anything key-like
 *.key
 *.pem
 *.jwt

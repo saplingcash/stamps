@@ -28,8 +28,9 @@ A deployment is described by a parameter file (`params/<network>.json`):
 | `zcash.confirmations` | confirmations before a stamp is final (default 10) |
 | `fees` | the fee schedule: `{ "from": <unix seconds>, "amount": "<ZEC base units>" }` entries, ascending |
 | `refundAfterDays` | days after which an undelivered request is overdue (default 7) |
+| `zcash.requestKeys` | the keys private requests are sealed to (§9.2): `{ "id": 1–255, "x25519": "<64 hex>", "from": <unix seconds>, "to": <unix seconds, exclusive, optional> }` |
 
-Changes to `issuers` and `fees` are append-only. A change is published in this repository before it
+Changes to `issuers`, `fees` and `requestKeys` are append-only. A change is published in this repository before it
 takes effect.
 
 ## 2. The request (Solana)
@@ -53,7 +54,8 @@ block time `t`, such that all of the following hold:
    units).
 4. **R4.** Exactly one top-level instruction of `T` invokes the SPL Memo program
    `MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`. Its data is the UTF-8 string
-   `sapling-stamp:1:<address>`, where `<address>` is one or more characters with no whitespace.
+   `sapling-stamp:1:<address>`, where `<address>` is one or more characters with no whitespace, or
+   `sapling-stamp:2:<kid>:<sealed>` for a private request (§9.1).
 5. **R5.** Exactly one top-level instruction of `T` is an SPL Token `TransferChecked` (data byte `0` =
    `12`, then u64 LE amount, then u8 decimals = 8) invoking `solana.tokenProgram`, with accounts:
    - `[0]` source: the holder's ZEC account (the redeem's `#7`);
@@ -69,6 +71,8 @@ A request's **address** is `<address>` from R4.
 
 - It is **deliverable** if it decodes (§4) to a transparent destination on `zcash.network`.
 - Otherwise it is **undeliverable**, and the request must be refunded (§5).
+
+A private request (§9) has no address; its deliverability is defined in §9.1.
 
 A transaction that fails any of R1–R5 is not a request, whatever it contains.
 
@@ -139,7 +143,7 @@ A **refund** of request `R` is a finalized, successful Solana transaction with:
 A stamp candidate `Z` is a **valid stamp** of request `R` if:
 1. **V1.** The record's `sha256(sig)[0..20]` equals that of `R`'s signature, and of no other request.
 2. **V2.** The record's burned equals `R`'s burned, and its harvested equals `R`'s harvested.
-3. **V3.** `R` is deliverable, and `Z` has an output paying at least 546 zatoshi to `R`'s destination
+3. **V3.** For a private request, V3 is replaced by §9.4. `R` is deliverable, and `Z` has an output paying at least 546 zatoshi to `R`'s destination
    script.
 4. **V4.** Among the candidates satisfying V1–V3 and V5 for `R`, `Z` comes first in chain order: lowest
    block height, then lowest position in its block.
@@ -177,3 +181,136 @@ A verifier also reports:
 
 A stamp is a record and 546 zatoshi. It is not a token; it confers no claim on any asset, and it
 carries no promise of value or of any future conversion.
+
+## 9. Private stamps
+
+A **private stamp** delivers the same record privately: the request names a shielded receiver that only
+the issuer can read, and the stamp pays 546 zatoshi and a text receipt to that receiver in Zcash's
+shielded pool. The harvest itself stays public on Solana (R2, R3); what is private is the receiver.
+
+### 9.1 The request
+
+A **private request** is a request (§2) whose memo is `sapling-stamp:2:<kid>:<sealed>`:
+
+- `<kid>` is a request key id, 1–255 in decimal, with no leading zeros;
+- `<sealed>` is exactly 92 bytes (§9.2) in base64url without padding (123 characters, canonical).
+
+A memo of the `sapling-stamp:2:` form that does not match this is not a request.
+
+A private request is **deliverable** if its fee paid does not exceed its harvested amount (otherwise the
+receipt would have nothing to receive), and a key with id `<kid>` is in `zcash.requestKeys` and in force
+at the request's block time `t` (`from ≤ t`, and `t < to` when `to` is set); otherwise it is
+undeliverable and must be refunded (§5). An entry's `to` is set once, and only to a time in the future. Whether the seal opens to a valid receiver is known only to the issuer: a seal
+that does not open is refunded as undeliverable, and the rules only require every request to end
+stamped or refunded (§7).
+
+### 9.2 The seal
+
+The receiver is the 43-byte Orchard receiver of a Unified Address (ZIP 316, typecode `0x03`: an 11-byte
+diversifier and a 32-byte `pk_d`). With the request key's public key `request_pk`, a fresh random
+X25519 secret `esk`, the key id `kid` (one byte) and the harvest's holder (redeem account `#0`, 32 bytes):
+
+```
+plaintext  = 0x03 || receiver                                     (44 bytes)
+epk        = X25519(esk, basepoint)
+ss         = X25519(esk, request_pk)                              (all-zero: refused)
+key||nonce = HKDF-SHA256(ikm = ss, salt = epk || request_pk, info = "sapling-stamp:2 sealed-receiver", L = 44)
+aad        = "sapling-stamp:2" || kid || holder
+sealed     = epk || ChaCha20-Poly1305(key, nonce, plaintext, aad)  (32 + 44 + 16 = 92 bytes)
+```
+
+`test-vectors/private.json` has seals to reproduce byte for byte.
+
+### 9.3 The receipt
+
+The shielded note's memo (512 bytes, ZIP 302) is UTF-8 text, zero-padded, of exactly nine lines
+separated by `\n`:
+
+```
+SPLG/2 private stamp
+coin $<ticker> <mint, base58>
+burned <amount burned, 6 decimals>
+harvested <ZEC harvested, 8 decimals> ZEC
+fee <fee paid, 8 decimals> ZEC
+received <harvested − fee, 8 decimals> ZEC
+harvest <the request's signature, base58>
+at <the request's block time, ISO 8601 UTC, YYYY-MM-DDTHH:MM:SSZ>
+sapling.cash/stamp/<the request's signature, base58>
+```
+
+Amounts are written in full, with no separators, so they parse back exactly; the ticker is at most 10
+bytes with no whitespace. The longest receipt is 439 bytes. A memo that differs from this form in any
+byte is not a receipt.
+
+### 9.4 The record and the rules
+
+A private stamp is a v6 transaction. Its OP_RETURN carries the **version 2 record**, 23 bytes:
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 4 | tag `53 50 4c 47` (`SPLG`) |
+| 4 | 1 | version `02` |
+| 5 | 18 | `sha256(sig)[0..18]` |
+
+The script is exactly `6a 17 <23 bytes>`. Z1 and Z2 apply as in §3; Z3 is met by a version 2 record.
+A stamp candidate `Z` with a version 2 record is a **valid stamp** of request `R` if:
+
+1. V1 holds with the 18-byte hash;
+2. `R` is a private request and is deliverable (§9.1);
+3. `Z` has no Sapling, Sprout or Orchard part, and its Ironwood bundle's value balance is exactly −546
+   zatoshi (546 zatoshi enter the pool);
+4. every transparent output of `Z` other than the record pays an issuer address valid at `Z`'s height
+   (the issuer's change);
+5. V4 and V5 hold.
+
+A version 1 record never answers a private request, and a version 2 record never answers a public one.
+The receiver of a private stamp is not public: the rules check that the issuer paid 546 zatoshi into the
+shielded pool for the request, not to whom.
+
+Since NU6.3 an Orchard action may only pay the address of the note it spends, so payments to someone
+else's Orchard receiver are made in the Ironwood pool, which uses the same receivers and keys.
+
+### 9.5 States
+
+Private and public requests share the states and the invariant of §7.
+
+### 9.6 Stamp proofs
+
+A holder shows where their private stamp went with a **stamp proof**:
+
+```
+splg-proof:1:<base64url( txid 32 (internal byte order) || pool 1 (2 = Ironwood) || action 1
+                         || receiver 43 || value 8 (little-endian) || rseed 32 )>
+```
+
+It is checked without any key:
+
+1. the transaction's own txid is the proof's, and the transaction is a valid private stamp (§9.4): mined
+   with `zcash.confirmations`, spent by an issuer valid at its height, of the shape of §9.4, and its
+   record names a deliverable private request;
+2. in action `action` of its Ironwood bundle, `rho` is the action's nullifier; the note
+   (`receiver`, `value`, `rho`, `rseed`, note plaintext version 3) is rebuilt, and its `esk` derived from
+   `rseed` (ZIP 212);
+3. the action's encrypted note decrypts with that `esk` and the receiver's `pk_d` to exactly this note:
+   this checks `epk` and the note commitment `cmx`, and yields the memo;
+4. the memo is a receipt (§9.3) whose harvest signature hashes to the record's 18 bytes, and whose burned,
+   harvested and fee amounts equal the request's (the Redeemed event's `amount` and `payout`, and the fee
+   paid);
+5. `value` is 546.
+
+A proof reveals one note: its receiver, its value and its receipt. It shows where the stamp went, not
+who controls that receiver. The holder makes a proof from a unified full or incoming viewing key.
+
+What each tool checks:
+
+- the verifier's `check-proof` command reads both chains and checks steps 1 to 5, except V4 and V5 (the
+  first valid stamp of the request, and no refund before it), which need every stamp and refund: the
+  full verifier checks those;
+- `stamp-proof check` and the WebAssembly `check` read only the transaction's bytes and the parameter
+  file. They check steps 2 to 5 (without the amounts), the shape of §9.4, and that every input names, and
+  every change output pays, a published issuer. A txid does not cover scriptSigs, so the inputs' keys are
+  only what the bytes claim unless the values of the spent coins are given: then every input's signature
+  is verified against the key it names (ZIP 244 sighash); a wrong value can only make a genuine stamp
+  fail. They cannot see whether these bytes are the mined ones (they print the wtxid, ZIP 239, which covers
+  the signatures), the issuer's validity period, or the Solana harvest, and say so in their output
+  (`notChecked`, with the unverified issuer first when no values were given).
