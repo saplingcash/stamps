@@ -43,6 +43,19 @@ pub fn p2pkh_address(network: Network, hash: &[u8; 20]) -> String {
     bs58::encode(body).into_string()
 }
 
+/// The key hash of a Base58Check P2PKH t-address on `network`, or None.
+pub fn p2pkh_hash(network: Network, address: &str) -> Option<[u8; 20]> {
+    let raw = bs58::decode(address).into_vec().ok()?;
+    if raw.len() != 26 {
+        return None;
+    }
+    let (body, check) = raw.split_at(22);
+    if &Sha256::digest(Sha256::digest(body))[..4] != check || body[..2] != network.p2pkh_prefix() {
+        return None;
+    }
+    body[2..].try_into().ok()
+}
+
 /// What kind of output script this is; the stamper builds nothing else.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ScriptKind {

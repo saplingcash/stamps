@@ -50,6 +50,11 @@ impl IssuerKey {
         Self::from_bytes(&arr)
     }
 
+    /// The secret scalar, for librustzcash's transparent signer (the private stamp path). Never printed.
+    pub fn secret_bytes(&self) -> Zeroizing<[u8; 32]> {
+        Zeroizing::new(self.key.to_bytes().into())
+    }
+
     pub fn public_key(&self) -> [u8; 33] {
         let vk = VerifyingKey::from(&self.key);
         let enc = vk.to_encoded_point(true);

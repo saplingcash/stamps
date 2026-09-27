@@ -13,6 +13,11 @@ name = "stamper_core"
 name = "stamper"
 path = "src/bin/stamper.rs"
 
+[[bin]]
+name = "stamp-proof"
+path = "src/bin/stamp-proof.rs"
+required-features = ["proof"]
+
 [dependencies]
 blake2b_simd = "1"
 k256 = { version = "0.13", features = ["ecdsa"] }
@@ -24,6 +29,29 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rand_core = { version = "0.6", features = ["getrandom"] }
 zeroize = "1"
+# the private stamp path (feature `private`): Ironwood outputs, built by librustzcash itself
+zcash_primitives = { version = "0.30", optional = true, default-features = false, features = ["std"] }
+zcash_protocol = { version = "0.10", optional = true }
+zcash_transparent = { version = "0.10", optional = true }
+orchard = { version = "0.15", optional = true, default-features = false, features = ["std"] }
+zcash_note_encryption = { version = "0.4", optional = true }
+secp256k1 = { version = "0.29", optional = true }
+x25519-dalek = { version = "2", optional = true, features = ["static_secrets"] }
+hkdf = { version = "0.12", optional = true }
+chacha20poly1305 = { version = "0.10", optional = true }
+base64 = { version = "0.22", optional = true }
+zcash_address = { version = "0.13", optional = true }
+zcash_script = { version = "0.4.3", optional = true, default-features = false }
+# only for the (never called) Sapling prover the builder's signature asks for
+sapling = { package = "sapling-crypto", version = "0.7", optional = true, default-features = false }
+jubjub = { version = "0.10", optional = true }
+bls12_381 = { version = "0.8", optional = true }
+
+[features]
+# stamp proofs and receipts only (no prover, no keys): what the WebAssembly build uses
+proof = ["dep:zcash_primitives", "dep:zcash_protocol", "dep:zcash_transparent", "dep:orchard", "dep:zcash_note_encryption", "dep:zcash_address", "dep:base64", "dep:sapling", "dep:zcash_script"]
+# the private stamp path: sealing, and building and proving the transaction
+private = ["proof", "dep:secp256k1", "dep:x25519-dalek", "dep:hkdf", "dep:chacha20poly1305", "sapling/circuit", "dep:jubjub", "dep:bls12_381", "zcash_primitives/circuits", "zcash_primitives/multicore", "zcash_primitives/transparent-inputs", "zcash_primitives/non-standard-fees", "orchard/circuit", "orchard/multicore"]
 
 [dev-dependencies]
 # the reference implementation, used only as a test oracle for txids and signature hashes
