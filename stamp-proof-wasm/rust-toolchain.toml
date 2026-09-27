@@ -1,0 +1,5 @@
+[toolchain]
+# the same compiler as stamper-core, with the WebAssembly target
+channel = "1.98.1"
+profile = "minimal"
+targets = ["wasm32-unknown-unknown"]
