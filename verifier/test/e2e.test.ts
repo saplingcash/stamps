@@ -93,7 +93,10 @@ describe("the verifier against both chains' RPCs", () => {
     const file = join(dir, "params.json");
     writeFileSync(file, JSON.stringify(p));
     const tsx = join(__dirname, "..", "node_modules", "tsx", "dist", "cli.mjs");
-    const { stdout } = await promisify(execFile)(process.execPath, [tsx, join(__dirname, "..", "src", "cli.ts"), "--params", file, "--solana", url, "--zcash", url, "--json"]);
+    // on a failure, the tool's own output says why (a rare failure seen only on the first run after a change)
+    const { stdout } = await promisify(execFile)(process.execPath, [tsx, join(__dirname, "..", "src", "cli.ts"), "--params", file, "--solana", url, "--zcash", url, "--json"]).catch((e: { code?: number; stdout?: string; stderr?: string }) => {
+      throw new Error(`the tool exited ${e.code}: ${e.stderr ?? ""} ${String(e.stdout ?? "").slice(0, 500)}`);
+    });
     const out = JSON.parse(stdout) as { totals: { stamped: number }; invariant: { ok: boolean }; stamps: { received: string }[] };
     expect(out.totals.stamped).toBe(1);
     expect(out.stamps[0]!.received).toBe("860000");

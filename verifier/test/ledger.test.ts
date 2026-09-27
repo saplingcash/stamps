@@ -42,7 +42,7 @@ describe("valid stamps (SPEC §3, §6)", () => {
   it("a well-formed stamp counts, with the receipt's numbers", () => {
     const { p, dest, addr, req } = setup();
     const l = buildLedger(p, [req], [], [z("aa", stampTx(issuer.pubkey, req.signature, 7n, 500_000n, dest))], NOW);
-    expect(l.stamps).toEqual([{ id: "aa", height: 100, request: req.signature, mint: req.mint, ticker: "OWL", burned: 7n, harvested: 500_000n, fee: 40_000n, received: 460_000n, address: addr }]);
+    expect(l.stamps).toEqual([{ id: "aa", height: 100, request: req.signature, mint: req.mint, ticker: "OWL", burned: 7n, harvested: 500_000n, fee: 40_000n, received: 460_000n, address: addr, mode: "public" }]);
     expect(l.states).toEqual([{ request: req.signature, state: "stamped" }]);
     expect(l.invariant.ok).toBe(true);
   });

@@ -5,6 +5,8 @@
  */
 import { base58 } from "@scure/base";
 import { decodeRecord, signatureHash } from "./record.ts";
+import { recordV2Hash, requestKeyInForce, signatureHashV2 } from "./private.ts";
+import { inspectTx, type Inspected } from "./zcash/inspect.ts";
 import { decodeAddress, destinationScript } from "./zcash/address.ts";
 import { bytesToHex, equalBytes, hexToBytes, isOpReturn, p2pkhSpenderHash, parseTransparent, recordPayload } from "./zcash/tx.ts";
 import { POSTAGE_ZAT, type Params } from "./params.ts";
@@ -32,7 +34,9 @@ export interface Stamp {
   harvested: bigint;
   fee: bigint;
   received: bigint;
+  /** empty for a private stamp: its receiver is shielded */
   address: string;
+  mode: "public" | "private";
 }
 export type State = "stamped" | "refunded" | "pending" | "overdue" | "unresolved";
 export interface Rejected {
@@ -57,13 +61,33 @@ function issuerHashes(p: Params, height: number): Uint8Array[] {
   return out;
 }
 
+/** Why a request cannot receive a stamp, or undefined if it can (SPEC.md §2, §9.2). */
+export function undeliverableReason(p: Params, r: Request): string | undefined {
+  if (r.mode === "private") {
+    // a fee above the harvested amount leaves nothing to receive (SPEC.md §9.1)
+    if (r.feePaid > r.harvested) return "the fee exceeds the harvested amount";
+    return requestKeyInForce(p.zcash.requestKeys, r.kid ?? 0, r.blockTime) ? undefined : "no request key with this id was in force at the harvest's time";
+  }
+  const dest = decodeAddress(r.address, p.zcash.network);
+  return dest.ok ? undefined : dest.reason;
+}
+
+function txVersion(rawHex: string): number {
+  const b = hexToBytes(rawHex.slice(0, 8));
+  return (b[0]! | (b[1]! << 8) | (b[2]! << 16) | (b[3]! << 24)) & 0x7fffffff;
+}
+
 export function buildLedger(p: Params, requests: Request[], refunds: Refund[], zcashTxs: ZcashTxInfo[], now: number, unresolvedRequests: string[] = []): Ledger {
   const rejected: Rejected[] = [];
   // requests by the hash the record carries; a hash shared by two requests matches neither (V1)
   const byHash = new Map<string, Request[]>();
+  const byHashV2 = new Map<string, Request[]>();
   for (const r of requests) {
-    const h = bytesToHex(signatureHash(base58.decode(r.signature)));
+    const sig = base58.decode(r.signature);
+    const h = bytesToHex(signatureHash(sig));
     byHash.set(h, [...(byHash.get(h) ?? []), r]);
+    const h2 = bytesToHex(signatureHashV2(sig));
+    byHashV2.set(h2, [...(byHashV2.get(h2) ?? []), r]);
   }
 
   // refunds that match their request exactly (SPEC.md §5), the earliest per request
@@ -85,6 +109,12 @@ export function buildLedger(p: Params, requests: Request[], refunds: Refund[], z
   for (const z of ordered) {
     if (z.height === null || z.confirmations < p.zcash.confirmations) {
       rejected.push({ txid: z.txid, reason: "Z1: not final yet" });
+      continue;
+    }
+    const version = z.rawHex.length >= 8 ? txVersion(z.rawHex) : 0;
+    if (version === 6) {
+      const r = privateCandidate(p, z, byHashV2, refundedAt, stampOf, rejected);
+      if (r) stampOf.set(r.request, r);
       continue;
     }
     let tx;
@@ -124,6 +154,10 @@ export function buildLedger(p: Params, requests: Request[], refunds: Refund[], z
       continue;
     }
     const r = matches[0]!;
+    if (r.mode !== "public") {
+      rejected.push({ txid: z.txid, reason: "V3: a version 1 record for a private request" });
+      continue;
+    }
     if (rec.burned !== r.burned || rec.harvested !== r.harvested) {
       rejected.push({ txid: z.txid, reason: "V2: burned or harvested differs from the Redeemed event" });
       continue;
@@ -147,15 +181,14 @@ export function buildLedger(p: Params, requests: Request[], refunds: Refund[], z
       rejected.push({ txid: z.txid, reason: `V4: a duplicate; the stamp of this request is ${stampOf.get(r.signature)!.id}` });
       continue;
     }
-    stampOf.set(r.signature, { id: z.txid, height: z.height, request: r.signature, mint: r.mint, ticker: rec.ticker, burned: r.burned, harvested: r.harvested, fee: r.feePaid, received: r.harvested - r.feePaid, address: r.address });
+    stampOf.set(r.signature, { id: z.txid, height: z.height, request: r.signature, mint: r.mint, ticker: rec.ticker, burned: r.burned, harvested: r.harvested, fee: r.feePaid, received: r.harvested - r.feePaid, address: r.address, mode: "public" });
   }
 
 
   const unresolved = new Set(unresolvedRequests);
   const problems: string[] = [];
   const states: Ledger["states"] = requests.map((r) => {
-    const dest = decodeAddress(r.address, p.zcash.network);
-    const undeliverable = dest.ok ? undefined : dest.reason;
+    const undeliverable = undeliverableReason(p, r);
     let state: State;
     if (unresolved.has(r.signature)) state = "unresolved";
     else if (stampOf.has(r.signature)) {
@@ -185,4 +218,47 @@ export function buildLedger(p: Params, requests: Request[], refunds: Refund[], z
     },
     invariant: { ok: problems.length === 0, problems },
   };
+}
+
+/**
+ * A v6 transaction as a private stamp (SPEC.md §9.4): spent by an issuer; exactly one OP_RETURN, a
+ * version 2 record naming exactly one request, which is private and deliverable; exactly 546 zatoshi
+ * into the Ironwood pool and no Sapling, Sprout or Orchard part; every other transparent output pays an
+ * issuer (its change). Who receives the note is shielded: only its holder can show it (§9.6).
+ */
+function privateCandidate(p: Params, z: ZcashTxInfo, byHashV2: Map<string, Request[]>, refundedAt: Map<string, number>, stampOf: Map<string, Stamp>, rejected: Rejected[]): Stamp | null {
+  const reject = (reason: string) => {
+    rejected.push({ txid: z.txid, reason });
+    return null;
+  };
+  let t: Inspected;
+  try {
+    t = inspectTx(z.rawHex);
+  } catch (e) {
+    if (/not loaded/.test((e as Error).message)) throw e;
+    return reject(`Z2: ${(e as Error).message}`);
+  }
+  if (t.txid !== z.txid) return reject("Z2: the transaction's own txid is not the one listed");
+  const issuers = issuerHashes(p, z.height!);
+  const isIssuer = (h: Uint8Array | null) => h !== null && issuers.some((k) => equalBytes(k, h));
+  if (!t.inputs.length || !t.inputs.every((i) => isIssuer(p2pkhSpenderHash(hexToBytes(i.scriptSig))))) return reject("Z2: not spent by an issuer valid at this height");
+  const outs = t.outputs.map((o) => ({ value: BigInt(o.value), script: hexToBytes(o.script) }));
+  const opReturns = outs.filter((o) => isOpReturn(o.script));
+  if (opReturns.length !== 1) return reject(`Z3: ${opReturns.length} OP_RETURN outputs`);
+  const hash = recordV2Hash(opReturns[0]!.script);
+  if (!hash) return reject("Z3: the OP_RETURN of a v6 transaction is not a version 2 record (6a 17 <23 bytes>)");
+  const matches = byHashV2.get(bytesToHex(hash)) ?? [];
+  if (matches.length !== 1) return reject(matches.length ? "V1: the signature hash matches more than one request" : "V1: no request has this signature hash");
+  const r = matches[0]!;
+  if (r.mode !== "private") return reject("V3: a version 2 record for a public request");
+  const undeliverable = undeliverableReason(p, r);
+  if (undeliverable) return reject(`V3: the request is undeliverable (${undeliverable})`);
+  if (t.sapling || t.sprout || t.orchard) return reject("V3: the transaction has a Sapling, Sprout or Orchard part");
+  if (!t.ironwood || BigInt(t.ironwood.valueBalance) !== -POSTAGE_ZAT) return reject("V3: the transaction does not put exactly 546 zatoshi into the Ironwood pool");
+  const change = outs.filter((o) => !isOpReturn(o.script));
+  if (!change.every((o) => issuers.some((k) => equalBytes(o.script, destinationScript({ kind: "p2pkh", hash: k }))))) return reject("V3: a transparent output pays someone other than an issuer");
+  const refundTime = refundedAt.get(r.signature);
+  if (refundTime !== undefined && z.time !== undefined && z.time > refundTime) return reject("V5: mined after the request was refunded");
+  if (stampOf.has(r.signature)) return reject(`V4: a duplicate; the stamp of this request is ${stampOf.get(r.signature)!.id}`);
+  return { id: z.txid, height: z.height!, request: r.signature, mint: r.mint, ticker: "", burned: r.burned, harvested: r.harvested, fee: r.feePaid, received: r.harvested - r.feePaid, address: "", mode: "private" };
 }

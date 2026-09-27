@@ -3,6 +3,7 @@
  * maxSupportedTransactionVersion 0), and classifies them as stamp requests (SPEC.md §2) or refunds (§5).
  */
 import { base58, base64 } from "@scure/base";
+import { PRIVATE_MEMO_PREFIX, parsePrivateMemo } from "../private.ts";
 import { MEMO_PROGRAM, REDEEMED_EVENT_DISCRIMINATOR, REDEEM_DISCRIMINATOR, REFUND_MEMO_PREFIX, REQUEST_MEMO_PREFIX, requiredFee, type Params } from "../params.ts";
 
 export interface RpcInstruction {
@@ -28,7 +29,12 @@ export interface Request {
   burned: bigint;
   harvested: bigint;
   feePaid: bigint;
+  /** a public request's Zcash address; empty for a private one */
   address: string;
+  /** `private`: the receiver is sealed (SPEC.md §9.2); `kid` and `sealed` (base64url) are the memo's */
+  mode: "public" | "private";
+  kid?: number;
+  sealed?: string;
 }
 export interface Refund {
   signature: string;
@@ -149,14 +155,22 @@ export function classify(tx: RpcTransaction, p: Params): Classified {
   const harvested = u64(ev, 80);
   if (memos.length !== 1) return { kind: "other", reason: `R4: ${memos.length} memo instructions` };
   const memo = memoText(memos[0]!);
-  if (!memo || !memo.startsWith(REQUEST_MEMO_PREFIX)) return { kind: "other", reason: "R4: the memo is not a stamp request" };
-  const address = memo.slice(REQUEST_MEMO_PREFIX.length);
-  if (!address || /\s/.test(address)) return { kind: "other", reason: "R4: the address is empty or contains whitespace" };
+  let request: Pick<Request, "address" | "mode" | "kid" | "sealed">;
+  if (memo?.startsWith(PRIVATE_MEMO_PREFIX)) {
+    const pm = parsePrivateMemo(memo);
+    if ("error" in pm) return { kind: "other", reason: pm.error };
+    request = { address: "", mode: "private", kid: pm.kid, sealed: memo.slice(memo.lastIndexOf(":") + 1) };
+  } else {
+    if (!memo || !memo.startsWith(REQUEST_MEMO_PREFIX)) return { kind: "other", reason: "R4: the memo is not a stamp request" };
+    const address = memo.slice(REQUEST_MEMO_PREFIX.length);
+    if (!address || /\s/.test(address)) return { kind: "other", reason: "R4: the address is empty or contains whitespace" };
+    request = { address, mode: "public" };
+  }
   const fees = transfers.filter((t) => t.destination === p.solana.feeAccount);
   if (fees.length !== 1) return { kind: "other", reason: `R5: ${fees.length} transfers to the fee account` };
   const f = fees[0]!;
   if (f.source !== source || f.mint !== p.solana.zecMint || f.authority !== holder) return { kind: "other", reason: "R5: the fee transfer's source, mint or authority is wrong" };
   const need = requiredFee(p.fees, tx.blockTime);
   if (need === null || f.amount < need) return { kind: "other", reason: `R5: fee ${f.amount} is below the required ${need}` };
-  return { kind: "request", request: { signature, slot: tx.slot, blockTime: tx.blockTime, mint, holder, source, burned, harvested, feePaid: f.amount, address } };
+  return { kind: "request", request: { signature, slot: tx.slot, blockTime: tx.blockTime, mint, holder, source, burned, harvested, feePaid: f.amount, ...request } };
 }

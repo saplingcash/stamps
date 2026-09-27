@@ -1,6 +1,7 @@
 /**
  * Zcash addresses a stamp can go to (SPEC.md §4): transparent P2PKH/P2SH (Base58Check), TEX (ZIP 320)
- * and Unified Addresses with a transparent receiver (ZIP 316). Everything else is undeliverable.
+ * and Unified Addresses with a transparent receiver (ZIP 316). Everything else is undeliverable. A
+ * private stamp goes to a unified address's Orchard receiver instead (SPEC.md §9.1).
  */
 import { sha256 } from "@noble/hashes/sha2";
 import { base58, bech32m } from "@scure/base";
@@ -56,7 +57,8 @@ function readCompactSize(b: Uint8Array, off: number): [number, number] | null {
   return null; // 0xff (8-byte) sizes exceed the 0x2000000 limit anyway
 }
 
-function decodeUnified(s: string, hrp: string): Decoded {
+/** A unified address's items, in order, after the checks every use shares (ZIP 316; SPEC.md §4). */
+function unifiedItems(s: string, hrp: string): { ok: true; items: { typecode: number; value: Uint8Array }[] } | { ok: false; reason: string } {
   let words: number[];
   try {
     const d = bech32m.decode(s as `${string}1${string}`, false);
@@ -81,31 +83,69 @@ function decodeUnified(s: string, hrp: string): Decoded {
   pad.set(new TextEncoder().encode(hrp), 0);
   const tail = raw.slice(raw.length - 16);
   for (let i = 0; i < 16; i++) if (tail[i] !== pad[i]) return { ok: false, reason: "not a valid unified address (padding)" };
-  const items = raw.slice(0, raw.length - 16);
+  const bytes = raw.slice(0, raw.length - 16);
+  const items: { typecode: number; value: Uint8Array }[] = [];
   let off = 0;
   let last = -1;
-  let transparent: Destination | null = null;
-  while (off < items.length) {
-    const tc = readCompactSize(items, off);
+  while (off < bytes.length) {
+    const tc = readCompactSize(bytes, off);
     if (!tc) return { ok: false, reason: "not a valid unified address (item)" };
-    const len = readCompactSize(items, tc[1]);
+    const len = readCompactSize(bytes, tc[1]);
     if (!len) return { ok: false, reason: "not a valid unified address (item)" };
     const [typecode] = tc;
     const [length, start] = len;
-    if (typecode > 0x2000000 || length > 0x2000000 || start + length > items.length) return { ok: false, reason: "not a valid unified address (item)" };
+    if (typecode > 0x2000000 || length > 0x2000000 || start + length > bytes.length) return { ok: false, reason: "not a valid unified address (item)" };
     if (typecode <= last) return { ok: false, reason: "not a valid unified address (item order)" };
     last = typecode;
-    const value = items.slice(start, start + length);
     if (typecode >= 0xe0 && typecode <= 0xfc) return { ok: false, reason: "this unified address carries data this wallet cannot read" };
+    items.push({ typecode, value: bytes.slice(start, start + length) });
+    off = start + length;
+  }
+  return { ok: true, items };
+}
+
+function decodeUnified(s: string, hrp: string): Decoded {
+  const u = unifiedItems(s, hrp);
+  if (!u.ok) return u;
+  let transparent: Destination | null = null;
+  for (const { typecode, value } of u.items) {
     if (typecode === 0x00 || typecode === 0x01) {
-      if (length !== 20) return { ok: false, reason: "not a valid unified address (transparent receiver)" };
+      if (value.length !== 20) return { ok: false, reason: "not a valid unified address (transparent receiver)" };
       if (transparent) return { ok: false, reason: "not a valid unified address (two transparent receivers)" };
       transparent = { kind: typecode === 0x00 ? "p2pkh" : "p2sh", hash: value };
     }
-    off = start + length;
   }
   if (!transparent) return { ok: false, reason: "this unified address has no transparent receiver: use a t1 or t3 address" };
   return { ok: true, destination: transparent, form: "unified" };
+}
+
+/** Typecode of the Orchard receiver in a unified address (ZIP 316): 11-byte diversifier, 32-byte pk_d. */
+export const ORCHARD_TYPECODE = 0x03;
+export const ORCHARD_RECEIVER_SIZE = 43;
+export type ShieldedDecoded = { ok: true; receiver: Uint8Array; alsoTransparent: boolean } | { ok: false; reason: string };
+
+/**
+ * The shielded receiver a private stamp goes to (SPEC.md §9.1): the Orchard receiver of a unified
+ * address on `network`. Other receivers are ignored; anything without an Orchard receiver is refused.
+ * (Whether pk_d is a valid curve point is checked where the receiver is used.)
+ */
+export function decodeShieldedReceiver(input: string, network: ZcashNetwork): ShieldedDecoded {
+  const s = input;
+  if (!s || /\s/.test(s)) return { ok: false, reason: "empty or contains whitespace" };
+  const lower = s.toLowerCase();
+  const hrp = lower.includes("1") ? lower.slice(0, lower.lastIndexOf("1")) : "";
+  const p = PREFIX[network];
+  if (s !== lower || !(p.ua as readonly string[]).includes(hrp)) {
+    const other = PREFIX[network === "mainnet" ? "testnet" : "mainnet"];
+    if (s === lower && (other.ua as readonly string[]).includes(hrp)) return { ok: false, reason: "wrong network" };
+    return { ok: false, reason: "not a unified address" };
+  }
+  const u = unifiedItems(s, hrp);
+  if (!u.ok) return u;
+  const orchard = u.items.find((i) => i.typecode === ORCHARD_TYPECODE);
+  if (!orchard) return { ok: false, reason: "this unified address has no Orchard receiver" };
+  if (orchard.value.length !== ORCHARD_RECEIVER_SIZE) return { ok: false, reason: "not a valid unified address (Orchard receiver)" };
+  return { ok: true, receiver: orchard.value, alsoTransparent: u.items.some((i) => i.typecode === 0x00 || i.typecode === 0x01) };
 }
 
 /** Decodes a stamp address for `network`, or says why it cannot receive a stamp. */

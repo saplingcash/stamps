@@ -28,7 +28,7 @@ describe("a stamp from the Rust stamper", () => {
   });
   it("is a valid stamp of its request", () => {
     const p = testParams({}, [fx.issuerAddress]);
-    const req: Request = { signature: fx.request.signature, slot: 1, blockTime: 1_800_000_000, mint: "M", holder: "H", source: "S", burned: BigInt(fx.request.burned), harvested: BigInt(fx.request.harvested), feePaid: 40_000n, address: fx.request.address };
+    const req: Request = { signature: fx.request.signature, slot: 1, blockTime: 1_800_000_000, mint: "M", holder: "H", source: "S", burned: BigInt(fx.request.burned), harvested: BigInt(fx.request.harvested), feePaid: 40_000n, address: fx.request.address, mode: "public" };
     const l = buildLedger(p, [req], [], [{ txid: fx.txid, height: 4_388_170, index: 3, confirmations: 12, rawHex: fx.txHex }], 1_800_000_100);
     expect(l.rejected).toEqual([]);
     expect(l.stamps).toMatchObject([{ id: fx.txid, ticker: "OWL", burned: 2_000_000_000_000n, harvested: 42_000_000n, received: 41_960_000n }]);

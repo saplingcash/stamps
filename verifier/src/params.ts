@@ -1,5 +1,6 @@
 /** Deployment parameters (SPEC.md §1). */
 import type { ZcashNetwork } from "./zcash/address.ts";
+import type { RequestKey } from "./private.ts";
 
 export interface Issuer {
   /** a transparent P2PKH address on `zcash.network` */
@@ -16,7 +17,8 @@ export interface FeeEntry {
 }
 export interface Params {
   solana: { programId: string; zecMint: string; tokenProgram: string; feeAccount: string; feeOwner: string };
-  zcash: { network: ZcashNetwork; issuers: Issuer[]; confirmations: number };
+  /** `requestKeys`: the keys private requests are sealed to (SPEC.md §9.2), append-only */
+  zcash: { network: ZcashNetwork; issuers: Issuer[]; confirmations: number; requestKeys?: RequestKey[] };
   fees: FeeEntry[];
   refundAfterDays: number;
 }
@@ -46,6 +48,11 @@ export function checkParams(p: Params): string[] {
   if (!(p.zcash.confirmations >= 1)) problems.push("zcash.confirmations must be at least 1");
   if (!p.fees.length) problems.push("fees is empty");
   for (let i = 1; i < p.fees.length; i++) if (p.fees[i]!.from <= p.fees[i - 1]!.from) problems.push("fees must be in ascending order of `from`");
+  for (const k of p.zcash.requestKeys ?? []) {
+    if (!Number.isInteger(k.id) || k.id < 1 || k.id > 255) problems.push(`zcash.requestKeys: id ${k.id} is not 1 to 255`);
+    if (!/^[0-9a-f]{64}$/.test(k.x25519 ?? "")) problems.push(`zcash.requestKeys: key ${k.id} is not 32 bytes of lowercase hex`);
+    if (k.to !== undefined && k.to <= k.from) problems.push(`zcash.requestKeys: key ${k.id} ends before it starts`);
+  }
   return problems;
 }
 

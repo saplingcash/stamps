@@ -7,6 +7,11 @@
  * Read-only: it sends nothing. Exit code 0 when the invariant holds, 1 when it does not, 2 on errors
  * (bad arguments, an unusable parameter file, a chain that could not be read). The exit code is set,
  * never forced with process.exit(), so piped output is always written in full.
+ *
+ *   npx tsx src/cli.ts check-proof --params <file> --solana <url> --zcash <url> --proof splg-proof:1:…
+ *
+ * checks one private stamp's proof against both chains (SPEC.md §9.6): exit 0 when it holds, 1 when it
+ * does not, 2 on errors. It prints what it checked and what it did not.
  */
 import { readFileSync } from "node:fs";
 import { formatZec } from "./format.ts";
@@ -14,21 +19,26 @@ import { buildLedger } from "./ledger.ts";
 import { checkParams, type Params } from "./params.ts";
 import { readSolana } from "./rpc/solana.ts";
 import { readZcash } from "./rpc/zebra.ts";
+import { checkProof } from "./checkproof.ts";
+import { loadInspectorFromDisk } from "./zcash/inspect.ts";
 
 const USAGE = `usage: stamps-verify --params <file> --solana <url> --zcash <url> [--json]
+       stamps-verify check-proof --params <file> --solana <url> --zcash <url> --proof splg-proof:1:…
 
   --params <file>  the deployment's parameter file (params/mainnet.json)
   --solana <url>   a Solana JSON-RPC endpoint
   --zcash <url>    a Zcash node's JSON-RPC (getblockcount, getaddresstxids, getrawtransaction, getblock)
   --json           print the full result as JSON
+  --proof <proof>  check-proof: the stamp proof to check
 
-Read-only. Exit code 0 when the invariant holds, 1 when it does not, 2 on errors.`;
+Read-only. Exit code 0 when the invariant (or the proof) holds, 1 when it does not, 2 on errors.`;
 
 async function main(args: string[]): Promise<number> {
   if (args.includes("--help") || args.includes("-h")) {
     console.log(USAGE);
     return 0;
   }
+  const proofMode = args[0] === "check-proof";
   const opt = (n: string) => {
     const i = args.indexOf(`--${n}`);
     if (i < 0) return undefined;
@@ -38,8 +48,10 @@ async function main(args: string[]): Promise<number> {
   const paramsFile = opt("params");
   const solanaUrl = opt("solana");
   const zcashUrl = opt("zcash");
-  const missing = (["params", "solana", "zcash"] as const).filter((n) => !opt(n));
-  if (!paramsFile || !solanaUrl || !zcashUrl) {
+  const proof = opt("proof");
+  const required = proofMode ? ["params", "solana", "zcash", "proof"] : ["params", "solana", "zcash"];
+  const missing = required.filter((n) => !opt(n));
+  if (!paramsFile || !solanaUrl || !zcashUrl || (proofMode && !proof)) {
     console.error(`missing ${missing.map((n) => `--${n}`).join(", ")}\n\n${USAGE}`);
     return 2;
   }
@@ -55,8 +67,26 @@ async function main(args: string[]): Promise<number> {
     console.error(`the parameter file is not usable:\n  ${problems.join("\n  ")}`);
     return 2;
   }
+  // private stamps are v6 transactions, read by librustzcash compiled to WebAssembly (wasm/)
+  try {
+    await loadInspectorFromDisk();
+  } catch (e) {
+    console.error(`cannot load the transaction reader (wasm/): ${(e as Error).message}`);
+    return 2;
+  }
   const json = args.includes("--json");
   const log = (s: string) => (json ? undefined : console.error(s));
+  if (proofMode) {
+    let r;
+    try {
+      r = await checkProof(p, proof!, solanaUrl, zcashUrl);
+    } catch (e) {
+      console.error(`could not read the chains: ${(e as Error).message}`);
+      return 2;
+    }
+    console.log(JSON.stringify(r, null, 2));
+    return r.ok ? 0 : 1;
+  }
   let sol, zec;
   try {
     sol = await readSolana(solanaUrl, p, log);
@@ -72,7 +102,7 @@ async function main(args: string[]): Promise<number> {
     const t = ledger.totals;
     console.log(`requests ${t.requests}: stamped ${t.stamped}, refunded ${t.refunded}, pending ${t.pending}, overdue ${t.overdue}, unresolved ${t.unresolved}`);
     console.log(`fees paid ${formatZec(t.feesPaid)} ZEC, refunded ${formatZec(t.refundedAmount)} ZEC`);
-    for (const s of ledger.stamps) console.log(`stamp ${s.id}  $${s.ticker}  burned ${s.burned} (coin base units)  harvested ${formatZec(s.harvested)} ZEC  fee ${formatZec(s.fee)} ZEC  received ${formatZec(s.received)} ZEC  → ${s.address}  (Solana ${s.request})`);
+    for (const s of ledger.stamps) console.log(`stamp ${s.id}  $${s.ticker}  burned ${s.burned} (coin base units)  harvested ${formatZec(s.harvested)} ZEC  fee ${formatZec(s.fee)} ZEC  received ${formatZec(s.received)} ZEC  → ${s.mode === "private" ? "a shielded address (private stamp)" : s.address}  (Solana ${s.request})`);
     for (const r of ledger.rejected) console.log(`not a stamp ${r.txid}: ${r.reason}`);
     console.log(ledger.invariant.ok ? "invariant: OK" : `invariant: BROKEN\n  ${ledger.invariant.problems.join("\n  ")}`);
   }

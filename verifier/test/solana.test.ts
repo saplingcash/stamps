@@ -10,7 +10,7 @@ describe("a stamp request (SPEC §2)", () => {
     const mint = key();
     const s = sig();
     const c = classify(harvestTx(p, { signature: s, holder, holderZec, mint, burned: 5n, harvested: 900_000n, fee: 40_000n, memo: "sapling-stamp:1:tmXYZ" }), p);
-    expect(c).toEqual({ kind: "request", request: { signature: s, slot: 1000, blockTime: 1_800_000_000, mint, holder, source: holderZec, burned: 5n, harvested: 900_000n, feePaid: 40_000n, address: "tmXYZ" } });
+    expect(c).toEqual({ kind: "request", request: { signature: s, slot: 1000, blockTime: 1_800_000_000, mint, holder, source: holderZec, burned: 5n, harvested: 900_000n, feePaid: 40_000n, address: "tmXYZ", mode: "public" } });
   });
   it("R1: a failed harvest is not a request", () => {
     expect(classify(harvestTx(p, { err: { InstructionError: [0, "Custom"] } }), p).kind).toBe("other");
