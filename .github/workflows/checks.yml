@@ -45,12 +45,25 @@ jobs:
       # rust-toolchain.toml pins the compiler; Cargo.lock the crates
       - run: cargo test --locked --features private
 
-  # the committed WebAssembly must be exactly what this source builds (stamp-proof-wasm/build.sh)
+  # the committed WebAssembly must be exactly what this source builds (stamp-proof-wasm/build.sh), with the
+  # inputs build.sh checks: Ubuntu 26.04's clang 21.1.8 (in the image pinned by digest) and the official
+  # wasm-bindgen release binary (by checksum)
   wasm:
     runs-on: ubuntu-24.04
+    container: ubuntu@sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78 # 26.04
     steps:
+      - name: build tools
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq curl ca-certificates git build-essential clang
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: wasm-bindgen-cli at the Cargo.lock version
-        working-directory: stamp-proof-wasm
-        run: cargo install wasm-bindgen-cli --locked --version "$(awk '/^name = "wasm-bindgen"$/{getline; gsub(/version = |"/, ""); print}' Cargo.lock)"
+      - name: wasm-bindgen 0.2.129 (the official release binary)
+        run: |
+          curl -sSfL -o /tmp/wasm-bindgen.tgz https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-x86_64-unknown-linux-musl.tar.gz
+          echo "82d12bb940e2d4e72e0d5605387fc1b8ca179044e012b620f0ce4e7440e8320e  /tmp/wasm-bindgen.tgz" | sha256sum -c -
+          mkdir -p /opt/wasm-bindgen && tar -xzf /tmp/wasm-bindgen.tgz -C /opt/wasm-bindgen --strip-components=1
       - run: ./stamp-proof-wasm/build.sh --check
+        env:
+          WASM_BINDGEN: /opt/wasm-bindgen/wasm-bindgen

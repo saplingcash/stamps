@@ -4,8 +4,11 @@
 #
 #   - the compiler: rust-toolchain.toml (with the wasm32-unknown-unknown target);
 #   - the crates: Cargo.lock (--locked);
-#   - the bindings: wasm-bindgen-cli at exactly the version of the wasm-bindgen crate in Cargo.lock
-#     (`cargo install wasm-bindgen-cli --version <it> --locked`); no wasm-opt pass;
+#   - the C compiler: secp256k1's C library is compiled into the WebAssembly with `clang`, so its exact
+#     build is an input too: Ubuntu 26.04's clang 21.1.8 (6ubuntu1);
+#   - the bindings: the official wasm-bindgen release binary at exactly the version of the wasm-bindgen
+#     crate in Cargo.lock (wasm-bindgen-0.2.129-x86_64-unknown-linux-musl, checked by its SHA-256; the same
+#     version built from source writes different bytes); no wasm-opt pass;
 #   - built from one fixed directory (Cargo hashes a path dependency's location into symbol names), with
 #     every source and build path remapped, so the binary carries no path of the machine that built it.
 #
@@ -18,7 +21,18 @@ want="$(awk '/^name = "wasm-bindgen"$/{getline; gsub(/version = |"/, ""); print}
 bindgen="${WASM_BINDGEN:-wasm-bindgen}"
 have="$("$bindgen" --version | awk '{print $2}')"
 if [ "$have" != "$want" ]; then
-  echo "wasm-bindgen $have found; this build needs exactly $want (cargo install wasm-bindgen-cli --version $want --locked)" >&2
+  echo "wasm-bindgen $have found; this build needs exactly $want (the official release binary)" >&2
+  exit 2
+fi
+bindgen_sha="fb59da714982a04273e9e4b09a85e523e5dd04de35b1a4a8b1641785ee7a71cf"
+if [ "$(sha256sum < "$(command -v "$bindgen")" | cut -c1-64)" != "$bindgen_sha" ]; then
+  echo "wasm-bindgen $have is not the official release binary (wasm-bindgen-$want-x86_64-unknown-linux-musl, SHA-256 $bindgen_sha)" >&2
+  exit 2
+fi
+cc_want="Ubuntu clang version 21.1.8 (6ubuntu1)"
+cc_have="$(clang --version 2>/dev/null | head -n 1 || true)"
+if [ "$cc_have" != "$cc_want" ]; then
+  echo "clang: \"$cc_have\" found; this build needs \"$cc_want\" (Ubuntu 26.04's clang package)" >&2
   exit 2
 fi
 src=/tmp/sapling-stamp-proof-wasm-src
