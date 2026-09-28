@@ -10,17 +10,16 @@
 //! nullifier) and `rseed`; its `esk` is derived from them (ZIP 212); the action must decrypt with that
 //! `esk` and the receiver's `pk_d` to exactly this note (which also checks `epk` and `cmx`), and the
 //! memo it yields is the receipt.
+//!
+//! That note check, and finding the note with a viewing key, are the zcash-delivery-proof library's
+//! (`zdp:1:`, the same fields with a two-byte action index). This module adds what makes the note a
+//! stamp: the transaction's shape, its issuer, and the receipt in the memo.
 
 use base64::Engine;
-use orchard::keys::{FullViewingKey, IncomingViewingKey, PreparedIncomingViewingKey, Scope};
-use orchard::note::{NoteVersion, RandomSeed, Rho};
-use orchard::note_encryption::IronwoodDomain;
-use orchard::value::NoteValue;
-use orchard::{Address, Note};
+use orchard::keys::IncomingViewingKey;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-use zcash_address::unified::{self, Container, Encoding};
-use zcash_note_encryption::{try_note_decryption, try_output_recovery_with_pkd_esk, Domain};
+use zcash_delivery_proof::{DeliveryProof, Pool, ViewingKeys};
 use zcash_primitives::transaction::Transaction;
 use zcash_protocol::consensus::{BranchId, NetworkType};
 
@@ -68,6 +67,11 @@ impl Proof {
             value: u64::from_le_bytes(b[77..85].try_into().unwrap()),
             rseed: b[85..117].try_into().unwrap(),
         })
+    }
+
+    /// The same note as a zcash-delivery-proof proof; None unless the pool is Ironwood.
+    pub fn delivery_proof(&self) -> Option<DeliveryProof> {
+        (self.pool == POOL_IRONWOOD).then_some(DeliveryProof { txid: self.txid, pool: Pool::Ironwood, action: u16::from(self.action), receiver: self.receiver, value: self.value, rseed: self.rseed })
     }
 }
 
@@ -228,16 +232,10 @@ fn stamp_shape(t: &Transaction, issuers: &[[u8; 20]]) -> Result<(), String> {
     record_hash(t).map(|_| ())
 }
 
-/// The consensus branch a v5/v6 transaction names in its header.
-/// A v4 transaction names no branch: it is read under Canopy, the last branch it was current in (its layout
-/// and txid, the double SHA-256 of its bytes, are the same for every v4 branch).
+/// The consensus branch a v5/v6 transaction names in its header (a v4 transaction, which names none, is
+/// read under Canopy).
 pub fn header_branch(tx: &[u8]) -> Result<BranchId, String> {
-    let header = u32::from_le_bytes(tx.get(0..4).ok_or("too short for a transaction")?.try_into().unwrap());
-    if header & 0x7fff_ffff == 4 {
-        return Ok(BranchId::Canopy);
-    }
-    let id = u32::from_le_bytes(tx.get(8..12).ok_or("too short for a transaction")?.try_into().unwrap());
-    BranchId::try_from(id).map_err(|_| format!("unknown consensus branch {id:#010x}"))
+    zcash_delivery_proof::header_branch(tx).map_err(|e| e.to_string())
 }
 
 fn read_tx(tx: &[u8]) -> Result<Transaction, String> {
@@ -252,7 +250,7 @@ fn read_tx(tx: &[u8]) -> Result<Transaction, String> {
 
 /// The receiver as a unified address holding only it.
 pub fn receiver_address(receiver: &[u8; 43], network: NetworkType) -> String {
-    unified::Address::try_from_items(vec![unified::Receiver::Orchard(*receiver)]).expect("one Orchard receiver is a valid UA").encode(&network)
+    zcash_delivery_proof::receiver_address(receiver, network)
 }
 
 /// The version 2 record's hash part, if the transaction carries exactly one OP_RETURN that is one.
@@ -315,20 +313,8 @@ pub fn check(tx: &[u8], proof: &Proof, network: NetworkType, issuers: &[[u8; 20]
     if let Some(values) = spent_values {
         sig::verify(&t, values)?;
     }
-    let bundle = t.ironwood_bundle().ok_or("the transaction has no Ironwood part")?;
-    let action = bundle.actions().get(proof.action as usize).ok_or("the transaction has no such action")?;
-    let rho = Option::from(Rho::from_bytes(&action.nullifier().to_bytes())).ok_or("bad nullifier")?;
-    let rseed = Option::from(RandomSeed::from_bytes(proof.rseed, &rho)).ok_or("bad rseed")?;
-    let recipient = Option::from(Address::from_raw_address_bytes(&proof.receiver)).ok_or("the receiver is not a valid shielded address")?;
-    let note = Option::from(Note::from_parts(recipient, NoteValue::from_raw(proof.value), rho, rseed, NoteVersion::V3)).ok_or("the note is not valid")?;
-    let domain = IronwoodDomain::for_action(action);
-    let esk = IronwoodDomain::derive_esk(&note).ok_or("no esk for this note")?;
-    let pk_d = IronwoodDomain::get_pk_d(&note);
-    let (got, to, memo) = try_output_recovery_with_pkd_esk(&domain, pk_d, esk, action).ok_or("the action does not decrypt to this note")?;
-    if to.to_raw_address_bytes() != proof.receiver || got.value().inner() != proof.value || got.rseed().as_bytes() != &proof.rseed {
-        return Err("the action does not decrypt to this note".into());
-    }
-    let receipt = Receipt::parse(&memo)?;
+    let delivery = zcash_delivery_proof::check(tx, &proof.delivery_proof().expect("an Ironwood proof")).map_err(|e| e.to_string())?;
+    let receipt = Receipt::parse(&delivery.memo)?;
     let sig = crate::record::solana_signature(&receipt.signature)?;
     if Sha256::digest(sig)[..18] != record_hash(&t)? {
         return Err("the receipt's harvest is not the one the record names".into());
@@ -348,52 +334,39 @@ pub fn check(tx: &[u8], proof: &Proof, network: NetworkType, issuers: &[[u8; 20]
     if spent_values.is_none() {
         not_checked.insert(0, ISSUER_NOT_VERIFIED.to_string());
     }
-    // ZIP 239: the txid then the authorizing-data digest, both in their internal byte order
-    let wtxid = [t.txid().as_ref().as_slice(), t.auth_commitment().as_bytes()].concat();
     Ok(Shown {
         txid: hex::encode(shown),
         address: receiver_address(&proof.receiver, network),
         value: proof.value,
         receipt,
         input_key_hashes: input_key_hashes(&t),
-        wtxid: hex::encode(wtxid),
+        wtxid: hex::encode(delivery.wtxid),
         issuer_verified: spent_values.is_some(),
         checked: checked.iter().map(|s| s.to_string()).collect(),
         not_checked,
     })
 }
 
-/// The incoming viewing keys in a UFVK or UIVK (Orchard item, external scope).
+/// The incoming viewing key in a UFVK or UIVK (its Orchard item, external scope).
 pub fn viewing_keys(s: &str) -> Result<(NetworkType, Vec<IncomingViewingKey>), String> {
-    let s = s.trim();
-    if let Ok((net, ufvk)) = unified::Ufvk::decode(s) {
-        let keys = ufvk.items().into_iter().filter_map(|i| if let unified::Fvk::Orchard(b) = i { FullViewingKey::from_bytes(&b).map(|f| f.to_ivk(Scope::External)) } else { None }).collect::<Vec<_>>();
-        return Ok((net, keys));
-    }
-    if let Ok((net, uivk)) = unified::Uivk::decode(s) {
-        let keys = uivk.items().into_iter().filter_map(|i| if let unified::Ivk::Orchard(b) = i { Option::from(IncomingViewingKey::from_bytes(&b)) } else { None }).collect::<Vec<_>>();
-        return Ok((net, keys));
-    }
-    Err("not a unified full or incoming viewing key".into())
+    let keys = ViewingKeys::parse(s).map_err(|e| e.to_string())?;
+    Ok((keys.network, keys.incoming.into_iter().take(1).collect()))
 }
 
 /// Makes a proof for the stamp note in `tx` that one of `keys` can decrypt.
 pub fn make(tx: &[u8], keys: &[IncomingViewingKey]) -> Result<Proof, String> {
     let t = read_tx(tx)?;
-    let bundle = t.ironwood_bundle().ok_or("the transaction has no Ironwood part")?;
-    for ivk in keys {
-        let prepared = PreparedIncomingViewingKey::new(ivk);
-        for (i, action) in bundle.actions().iter().enumerate() {
-            let domain = IronwoodDomain::for_action(action);
-            if let Some((note, to, _memo)) = try_note_decryption(&domain, &prepared, action) {
-                if note.value().inner() != POSTAGE {
-                    continue;
-                }
-                return Ok(Proof { txid: *t.txid().as_ref(), pool: POOL_IRONWOOD, action: i as u8, receiver: to.to_raw_address_bytes(), value: note.value().inner(), rseed: *note.rseed().as_bytes() });
-            }
-        }
-    }
-    Err("none of these keys receives a note in this transaction".into())
+    t.ironwood_bundle().ok_or("the transaction has no Ironwood part")?;
+    // the network only matters for encoding addresses, which make() does not do
+    let keys = ViewingKeys { network: NetworkType::Main, incoming: keys.to_vec(), outgoing: vec![] };
+    let found = zcash_delivery_proof::make(tx, &keys).map_err(|e| e.to_string())?;
+    let p = found
+        .into_iter()
+        .map(|f| f.proof)
+        .find(|p| p.pool == Pool::Ironwood && p.value == POSTAGE)
+        .ok_or("none of these keys receives a note in this transaction")?;
+    let action = u8::try_from(p.action).map_err(|_| "the stamp note's action index does not fit a stamp proof")?;
+    Ok(Proof { txid: p.txid, pool: POOL_IRONWOOD, action, receiver: p.receiver, value: p.value, rseed: p.rseed })
 }
 
 /// A transaction as the stamp rules read it (SPEC.md §3, §9.4): what the verifier needs from a v5 or

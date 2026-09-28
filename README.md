@@ -75,6 +75,12 @@ cargo run --release --features proof --bin stamp-proof -- make --tx <file> --par
 
 A viewing key is read from a file, never from the command line, and the tool has no network code.
 
+The note check itself (the note in the transaction: found with a viewing key, or checked with no key) is
+the [zcash-delivery-proof](https://github.com/saplingcash/zcash-delivery-proof) library, pinned by commit
+in `stamper-core/Cargo.toml`. A stamp proof holds the same fields as its `zdp:1:` proof, with a one-byte
+action index; this repo adds what makes the note a stamp: the transaction's shape, its issuer and the
+receipt.
+
 `verifier/wasm/` holds the same checker as WebAssembly, built by `stamp-proof-wasm/build.sh` from pinned
 inputs only (the Rust toolchain, `Cargo.lock`, Ubuntu 26.04's clang 21.1.8 for the C code it contains, the
 official wasm-bindgen release binary at the lock's version, no wasm-opt), so it can be rebuilt byte for

@@ -1087,6 +1087,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "zcash-delivery-proof",
  "zcash_address",
  "zcash_note_encryption",
  "zcash_primitives",
@@ -1483,6 +1484,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
 dependencies = [
  "tap",
+]
+
+[[package]]
+name = "zcash-delivery-proof"
+version = "0.1.0"
+source = "git+https://github.com/saplingcash/zcash-delivery-proof?rev=e6a9b1f5e54122265eaadf0dd6bc5ec97f90947a#e6a9b1f5e54122265eaadf0dd6bc5ec97f90947a"
+dependencies = [
+ "base64",
+ "hex",
+ "orchard",
+ "serde",
+ "zcash_address",
+ "zcash_note_encryption",
+ "zcash_primitives",
+ "zcash_protocol",
 ]
 
 [[package]]

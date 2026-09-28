@@ -42,6 +42,8 @@ chacha20poly1305 = { version = "0.10", optional = true }
 base64 = { version = "0.22", optional = true }
 zcash_address = { version = "0.13", optional = true }
 zcash_script = { version = "0.4.3", optional = true, default-features = false }
+# the delivery proof itself (checking a note against the transaction, finding notes with a viewing key)
+zcash-delivery-proof = { git = "https://github.com/saplingcash/zcash-delivery-proof", rev = "e6a9b1f5e54122265eaadf0dd6bc5ec97f90947a", optional = true }
 # only for the (never called) Sapling prover the builder's signature asks for
 sapling = { package = "sapling-crypto", version = "0.7", optional = true, default-features = false }
 jubjub = { version = "0.10", optional = true }
@@ -49,7 +51,7 @@ bls12_381 = { version = "0.8", optional = true }
 
 [features]
 # stamp proofs and receipts only (no prover, no keys): what the WebAssembly build uses
-proof = ["dep:zcash_primitives", "dep:zcash_protocol", "dep:zcash_transparent", "dep:orchard", "dep:zcash_note_encryption", "dep:zcash_address", "dep:base64", "dep:sapling", "dep:zcash_script"]
+proof = ["dep:zcash_primitives", "dep:zcash_protocol", "dep:zcash_transparent", "dep:orchard", "dep:zcash_note_encryption", "dep:zcash_address", "dep:base64", "dep:sapling", "dep:zcash_script", "dep:zcash-delivery-proof"]
 # the private stamp path: sealing, and building and proving the transaction
 private = ["proof", "dep:secp256k1", "dep:x25519-dalek", "dep:hkdf", "dep:chacha20poly1305", "sapling/circuit", "dep:jubjub", "dep:bls12_381", "zcash_primitives/circuits", "zcash_primitives/multicore", "zcash_primitives/transparent-inputs", "zcash_primitives/non-standard-fees", "orchard/circuit", "orchard/multicore"]
 
