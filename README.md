@@ -1,9 +1,32 @@
 # Sapling stamps
 
 A **stamp** is a permanent record, on Zcash, of a harvest on [Sapling](https://sapling.cash): someone
-burned a Sapling coin on Solana and received ZEC from that coin's roots. The stamp records the amount
-burned and the ZEC harvested, cites the Solana transaction, and sends 546 zatoshi to the Zcash address
-the harvester chose.
+burned a Sapling coin on Solana and received ZEC from that coin's roots.
+
+**Shielded stamps** go straight into the harvester's Zcash wallet. The harvest on Solana names a shielded
+address, sealed so that only the stamp issuer can read it; the stamp arrives as a shielded note in the
+holder's wallet, with the receipt in its encrypted memo. The chains show that the issuer sent a stamp into
+the shielded pool for that harvest, not to whom. Anyone can still count every shielded stamp by the public
+rules, and the holder can show where theirs went with a stamp proof that reveals that one note and nothing
+else. The specification calls them *private stamps* (SPEC.md §9), as do the receipt memo
+(`SPLG/2 private stamp`) and the code.
+
+**Public stamps** record the same in the clear: the stamp records the amount burned and the ZEC
+harvested, cites the Solana transaction, and sends 546 zatoshi to the transparent Zcash address the
+harvester chose.
+
+## A live example
+
+The first shielded stamp on mainnet:
+
+- its certificate: <https://sapling.cash/stamp/641kDwww2RsNjDDqF3Ku4f35YXYWrJePE1gUVKKMefjHG424ybg4ivx5bvi1L8RF55jMof16RCt4vZ2DGyisN6DN>
+- the harvest on Solana: <https://solscan.io/tx/641kDwww2RsNjDDqF3Ku4f35YXYWrJePE1gUVKKMefjHG424ybg4ivx5bvi1L8RF55jMof16RCt4vZ2DGyisN6DN>
+- the stamp on Zcash: <https://blockchair.com/zcash/transaction/7c9dd898379e73ab0f8f3be74053aa3e2377a7f942de15a1699e167df65a62a8>
+
+On Zcash it is a transaction from the issuer into the shielded pool: the address it went to appears
+nowhere.
+
+## What is here
 
 This repository holds what anyone needs to check the stamps without trusting Sapling:
 
@@ -21,12 +44,12 @@ This repository holds what anyone needs to check the stamps without trusting Sap
   (`mainnet.json`; `local.json` is a template for tests against a local Solana validator and Zcash
   testnet, since the vault program is deployed on no public Solana test network).
 
-**Private stamps** (SPEC.md §9) deliver the same record privately: the harvest names a shielded receiver
-sealed to a published request key, and the stamp pays 546 zatoshi and a text receipt to it in the
-shielded pool. Anyone can still count every private stamp by the rules; the rules don't show where it
-went. The issuer reads the receiver to send the stamp. The holder can show where it went with a stamp
-proof that reveals that one note and nothing else. `stamper-core`'s `private` feature builds private
-stamps (on librustzcash's transaction builder).
+**Shielded stamps** (SPEC.md §9, private stamps): the harvest names a shielded receiver sealed to a
+published request key (`params/mainnet.json`, `zcash.requestKeys`), and the stamp pays 546 zatoshi and a
+text receipt to it in the shielded pool. The issuer reads the receiver to send the stamp; the rules count
+the stamp without showing where it went. `stamper-core`'s `private` feature builds them (on
+librustzcash's transaction builder). Making a stamp proof needs the receiving wallet's viewing key, which
+not every wallet can export yet; the stamp is delivered either way.
 
 Checking a proof against both chains (mined, issuer, shape, note, receipt, and the receipt's amounts
 against the Solana harvest):
@@ -53,9 +76,10 @@ cargo run --release --features proof --bin stamp-proof -- make --tx <file> --par
 A viewing key is read from a file, never from the command line, and the tool has no network code.
 
 `verifier/wasm/` holds the same checker as WebAssembly, built by `stamp-proof-wasm/build.sh` from pinned
-inputs only (the toolchain, `Cargo.lock`, wasm-bindgen at the lock's version, no wasm-opt), so it can be
-rebuilt byte for byte; CI does that on every push and fails on any difference. Its sha256 is in
-`stamp-proof-wasm/SHA256`.
+inputs only (the Rust toolchain, `Cargo.lock`, Ubuntu 26.04's clang 21.1.8 for the C code it contains, the
+official wasm-bindgen release binary at the lock's version, no wasm-opt), so it can be rebuilt byte for
+byte; `build.sh` checks each input and CI rebuilds it in a pinned Ubuntu 26.04 image on every push,
+failing on any difference. Its sha256 is in `stamp-proof-wasm/SHA256`.
 
 A stamp is a record and 546 zatoshi. It is not a token, it confers no claim on any asset, and it carries
 no promise of value or of any future conversion.
@@ -94,9 +118,10 @@ verifier checks a stamp that `stamper-core` built and signed.
 ## Status
 
 Version 1. The rules were tested on Zcash testnet and a local Solana validator running the real programs,
-and reviewed independently. `params/mainnet.json` names the mainnet fee account, its owner and the
-issuer; stamps start with Sapling's launch.
+and reviewed independently. `params/mainnet.json` names the mainnet fee account, its owner, the issuer
+and the request key for shielded stamps. Public and shielded stamps both run on mainnet.
 
 ## License
 
-Apache License 2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Apache License 2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE). The licence covers the code and
+documents, not the Sapling name or keys: see [TRADEMARKS.md](TRADEMARKS.md).
