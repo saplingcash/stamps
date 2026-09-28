@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { sha256 } from "@noble/hashes/sha2";
 import { RECORD_SIZE, decodeRecord, encodeRecord, signatureHash, tickerBytes } from "../src/record.ts";
 import { REDEEMED_EVENT_DISCRIMINATOR, REDEEM_DISCRIMINATOR, requiredFee } from "../src/params.ts";
+import { label } from "./helpers/labels.ts";
 
 const enc = new TextEncoder();
 
 describe("the record (SPEC §3)", () => {
-  const sigHash = signatureHash(new Uint8Array(64).fill(7));
+  const sigHash = signatureHash(label("tests/record/signature", 64));
   it("round-trips, is 52 bytes, and starts with SPLG v1", () => {
     const b = encodeRecord({ sigHash, burned: 2_000_000_000_000n, harvested: 42_000_000n, ticker: "OWL" });
     expect(b.length).toBe(RECORD_SIZE);
@@ -38,7 +39,7 @@ describe("the record (SPEC §3)", () => {
     expect(decodeRecord(good.slice(0, 51))).toHaveProperty("error");
   });
   it("hashes the 64-byte signature and keeps 20 bytes", () => {
-    const s = new Uint8Array(64).fill(1);
+    const s = label("tests/record/hashed-signature", 64);
     expect(signatureHash(s)).toEqual(sha256(s).slice(0, 20));
     expect(() => signatureHash(new Uint8Array(63))).toThrow();
   });

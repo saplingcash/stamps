@@ -1,0 +1,14 @@
+# gitleaks (CI's secret scan): the default rules, with one narrow allowance.
+# test-vectors/private.json carries the X25519 request secrets of its test cases. They are public test
+# values, derived from labels (the first 32 bytes of SHA-512 of "sapling.cash/stamps/vectors/seal/<n>/
+# request-secret"; stamper-core/tests/vectors_private.rs), never keys in use. Only those lines, in that
+# file, are allowed; every other finding still fails the scan.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "public test request secrets in the private-stamp test vectors"
+condition = "AND"
+paths = ['''^test-vectors/private\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"requestSecret": "[0-9a-f]{64}",?$''']

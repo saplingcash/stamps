@@ -3,39 +3,39 @@
   "vectors": [
     {
       "description": "a typical harvest",
-      "signature": "4NGhBoJB1PgQRzt3KojYNefba7d6CdnCyrWYfeBy11qSwfYo8Y6YXnU7YwEZkWgpKABeg99HffUnHcvrRkwBJjyj",
+      "signature": "riuMoihGqqEcNAppPH4UkYcem3ACA3diV9FnEu7hzYegNtt7YF7VA5zjtC4CGpGF492fGTuPRSHGhKX7eoSPALU",
       "burned": "2000000000000",
       "harvested": "42000000",
       "ticker": "OWL",
-      "record": "53504c470186ea9bf9fd7cc0a4aba25d82fe48c784207b1af300204aa9d101000080de800200000000034f574c00000000000000",
-      "script": "6a3453504c470186ea9bf9fd7cc0a4aba25d82fe48c784207b1af300204aa9d101000080de800200000000034f574c00000000000000"
+      "record": "53504c4701c6bb986958f03c0f2070b8305e3f65683c143d1200204aa9d101000080de800200000000034f574c00000000000000",
+      "script": "6a3453504c4701c6bb986958f03c0f2070b8305e3f65683c143d1200204aa9d101000080de800200000000034f574c00000000000000"
     },
     {
       "description": "the largest amounts",
-      "signature": "2mJjcW4xiREtZPDiRFfNGLRm8jvJriVnzZPaTwmRGmZ5tSx3V3futuMNx4nNi9fHrjNK4JGt2u6mDHPVDPJFZUWJ",
+      "signature": "4eZzzwhnCweXko86Gp2u2tBAs4J15bmhZdU5ep26A8Wh1cpcNFLKoBmcsgCpAJisG1zFDb5M7qkofbsSYPyUVu44",
       "burned": "18446744073709551615",
       "harvested": "18446744073709551615",
       "ticker": "ABCDEFGHIJ",
-      "record": "53504c4701a464e7d4002384022789eb54a603f8d90b680471ffffffffffffffffffffffffffffffff0a4142434445464748494a",
-      "script": "6a3453504c4701a464e7d4002384022789eb54a603f8d90b680471ffffffffffffffffffffffffffffffff0a4142434445464748494a"
+      "record": "53504c470101fc7d6243dab260f4e10070eb15661db7f958b4ffffffffffffffffffffffffffffffff0a4142434445464748494a",
+      "script": "6a3453504c470101fc7d6243dab260f4e10070eb15661db7f958b4ffffffffffffffffffffffffffffffff0a4142434445464748494a"
     },
     {
       "description": "an empty ticker",
-      "signature": "KdSsMyJL6GbwYLk8LhrmooX7oTkEQB27PxEmuqzdB36SVS1pTQZD4wwiCtkWUXynRX2RJJhtn6cvxrYLg6sVu2M",
+      "signature": "4q8fLGXEhDPZw1NmpMP1DYtfUjnuaTt7YXFjWF5KEdSz3nXMfZRsmKtHdqTdrtWHn66tmeNSWRSD4XPn1Z45ykpd",
       "burned": "1",
       "harvested": "1",
       "ticker": "",
-      "record": "53504c470125879cf94e426ea04917e20461b900d720a6e0c0010000000000000001000000000000000000000000000000000000",
-      "script": "6a3453504c470125879cf94e426ea04917e20461b900d720a6e0c0010000000000000001000000000000000000000000000000000000"
+      "record": "53504c4701c741ae833e0d39de022dfb4410c227aa0016d715010000000000000001000000000000000000000000000000000000",
+      "script": "6a3453504c4701c741ae833e0d39de022dfb4410c227aa0016d715010000000000000001000000000000000000000000000000000000"
     },
     {
       "description": "a ticker cut at 10 bytes on a character boundary",
-      "signature": "3uWzLhupf21RcH9cHYr8fhZq6tkg2izps4P3nd4FAJAWmfU8nMZZN66tHZ5XApPGUmHUeyb3dJs2y7sjTdtHebWr",
+      "signature": "5J3cHasheMKztCTFuEMaPMeGVo11WB7fLDvA8sEf1fWSaHqgd7HbvfbKNZ8XqyWmKFFtf8R5ASXzraFQcfEsZEyS",
       "burned": "123456789",
       "harvested": "987654321",
       "ticker": "ÄÄÄÄÄÄ",
-      "record": "53504c47015bf93bc49d52a7a91d0f78bf444070c169c665c015cd5b0700000000b168de3a000000000ac384c384c384c384c384",
-      "script": "6a3453504c47015bf93bc49d52a7a91d0f78bf444070c169c665c015cd5b0700000000b168de3a000000000ac384c384c384c384c384"
+      "record": "53504c4701e422768fa0f925cb89f990362762211e0f50b80315cd5b0700000000b168de3a000000000ac384c384c384c384c384",
+      "script": "6a3453504c4701e422768fa0f925cb89f990362762211e0f50b80315cd5b0700000000b168de3a000000000ac384c384c384c384c384"
     }
   ]
 }

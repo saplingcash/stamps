@@ -8,6 +8,7 @@ import { decodeAddress, destinationScript, encodeTransparent, type Destination }
 import { hash160, parseTransparent, hexToBytes, p2pkhSpenderHash } from "../src/zcash/tx.ts";
 import { buildV5, fakeKey, harvestTx, key, p2pkhScriptSig, recordScript, refundTx, stampTx, testParams } from "./helpers/builders.ts";
 import type { Params } from "../src/params.ts";
+import { label } from "./helpers/labels.ts";
 
 const issuer = fakeKey();
 const NOW = 1_800_000_000 + 3600;
@@ -98,7 +99,7 @@ describe("valid stamps (SPEC §3, §6)", () => {
     const hash = Uint8Array.from(randomBytes(20));
     const pad = new Uint8Array(16);
     pad.set(new TextEncoder().encode("utest"));
-    const ua = bech32m.encode("utest", bech32m.toWords(f4jumble(Uint8Array.from([0x01, 20, ...hash, 0x02, 43, ...new Uint8Array(43).fill(1), ...pad]))), false);
+    const ua = bech32m.encode("utest", bech32m.toWords(f4jumble(Uint8Array.from([0x01, 20, ...hash, 0x02, 43, ...label("tests/ledger/sapling-receiver", 43), ...pad]))), false);
     expect(decodeAddress(ua, "testnet")).toMatchObject({ ok: true, destination: { kind: "p2sh" } });
     const c = classify(harvestTx(p0, { memo: `sapling-stamp:1:${ua}`, burned: 7n, harvested: 500_000n }), p0);
     const r = (c as { request: Request }).request;

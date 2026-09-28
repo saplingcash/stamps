@@ -3,6 +3,8 @@
 //! under each consensus branch it knows. (NU7 is only in librustzcash behind an unstable flag; the
 //! branch is a plain number for our builder, tested in `branches.rs`.)
 
+mod common;
+
 use std::ops::Deref;
 
 use stamper_core::address::{hash160, p2pkh_script};
@@ -48,7 +50,7 @@ impl Authorization for Auth {
 }
 
 fn key(n: u8) -> IssuerKey {
-    IssuerKey::from_bytes(&[n; 32]).unwrap()
+    crate::common::issuer(&format!("tests/oracle/issuer/{n}"))
 }
 
 /// librustzcash's (txid, sighash of every input) for our bytes.
@@ -90,7 +92,7 @@ fn txid_and_sighash_match_librustzcash_on_every_known_branch() {
                 expiry_height: 4_388_206,
                 inputs: (0..n_inputs).map(|i| TxIn { prevout: OutPoint { txid: [i + 1; 32], index: i as u32 }, script_sig: vec![0x51], sequence: 0xffff_fffe - i as u32 }).collect(),
                 outputs: vec![
-                    TxOut { value: 0, script: [vec![0x6a, 0x34], vec![0xab; 52]].concat() },
+                    TxOut { value: 0, script: [vec![0x6a, 0x34], crate::common::label::<52>("tests/oracle/record").to_vec()].concat() },
                     TxOut { value: 546, script: p2pkh_script(&hash160(b"someone")) },
                     TxOut { value: 123_456, script: issuer_script.clone() },
                 ],
@@ -117,8 +119,8 @@ fn a_built_stamp_parses_in_librustzcash_and_its_signature_verifies() {
         consensus_branch_id: branch_id(BranchId::Nu6_3),
         expiry_height: 4_388_206,
         marginal_fee: 5_000,
-        inputs: vec![Utxo { txid: "11".repeat(32), vout: 1, value: 1_000_000 }],
-        outputs: vec![Output { value: 0, script: format!("6a34{}", "cd".repeat(52)) }, Output { value: 546, script: hex::encode(p2pkh_script(&hash160(b"holder"))) }],
+        inputs: vec![Utxo { txid: crate::common::label_hex("tests/oracle/coin"), vout: 1, value: 1_000_000 }],
+        outputs: vec![Output { value: 0, script: format!("6a34{}", hex::encode(crate::common::label::<52>("tests/oracle/record"))) }, Output { value: 546, script: hex::encode(p2pkh_script(&hash160(b"holder"))) }],
     };
     let built = build(&k, &req).unwrap();
     let bytes = hex::decode(&built.hex).unwrap();

@@ -222,7 +222,7 @@ fn stamp_shape(t: &Transaction, issuers: &[[u8; 20]]) -> Result<(), String> {
         }
         let issuer_change = s.len() == 25 && s[..3] == [0x76, 0xa9, 0x14] && s[23..] == [0x88, 0xac] && known(&s[3..23]);
         if !issuer_change {
-            return Err("a transparent output pays someone other than an issuer".into());
+            return Err("a transparent output pays someone who is not an issuer: a stamp only returns change to its issuer".into());
         }
     }
     record_hash(t).map(|_| ())
@@ -245,7 +245,7 @@ fn read_tx(tx: &[u8]) -> Result<Transaction, String> {
     let mut back = Vec::new();
     t.write(&mut back).map_err(|e| e.to_string())?;
     if back != tx {
-        return Err("the transaction does not re-serialize to the same bytes".into());
+        return Err("the transaction's bytes do not survive a round trip through librustzcash".into());
     }
     Ok(t)
 }

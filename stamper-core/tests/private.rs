@@ -2,11 +2,12 @@
 //! librustzcash, read it back, make a stamp proof with the receiver's viewing key and check it.
 #![cfg(feature = "private")]
 
+mod common;
+
 use std::time::Instant;
 
 use base64::Engine;
-use orchard::keys::{FullViewingKey, Scope, SpendingKey};
-use stamper_core::key::IssuerKey;
+use orchard::keys::{FullViewingKey, Scope};
 use stamper_core::private::build::{build_private, PrivateRequest, Sealed};
 use stamper_core::private::memo::Receipt;
 use stamper_core::private::proof::{check, make, Proof, POOL_IRONWOOD};
@@ -17,38 +18,41 @@ use stamper_core::address::Network;
 use zcash_primitives::transaction::Transaction;
 use zcash_protocol::consensus::{BranchId, NetworkType};
 
-const HOLDER: [u8; 32] = [0x42; 32];
+/// The harvesting wallet in the tests.
+fn holder() -> [u8; 32] {
+    crate::common::label("tests/holder")
+}
 
 fn wallet(n: u8) -> (FullViewingKey, [u8; 43]) {
-    let sk = Option::<SpendingKey>::from(SpendingKey::from_bytes([n; 32])).unwrap();
+    let sk = crate::common::spending_key(&format!("tests/wallet/{n}"));
     let fvk = FullViewingKey::from(&sk);
     let addr = fvk.address_at(0u32, Scope::External).to_raw_address_bytes();
     (fvk, addr)
 }
 
 fn receipt() -> Receipt {
-    Receipt { ticker: "ROOT".into(), mint: bs58::encode([5u8; 32]).into_string(), burned: 1_250_000_000_000, harvested: 1_234_567, fee: 40_000, signature: bs58::encode([9u8; 64]).into_string(), block_time: 1_790_424_000 }
+    Receipt { ticker: "ROOT".into(), mint: bs58::encode(crate::common::label::<32>("tests/mint")).into_string(), burned: 1_250_000_000_000, harvested: 1_234_567, fee: 40_000, signature: bs58::encode(crate::common::label::<64>("tests/harvest-signature")).into_string(), block_time: 1_790_424_000 }
 }
 
 fn request(rk: &RequestKey, receiver: &[u8; 43], kid: u8) -> PrivateRequest {
-    let sealed = seal(&rk.public(), kid, &HOLDER, receiver, [7; 32]).unwrap();
+    let sealed = seal(&rk.public(), kid, &holder(), receiver, crate::common::label("tests/esk")).unwrap();
     PrivateRequest {
         network: Network::Testnet,
         consensus_branch_id: u32::from(BranchId::Nu6_3),
         target_height: 4_400_000,
         expiry_height: 4_400_040,
         marginal_fee: 5_000,
-        input: Utxo { txid: "ab".repeat(32), vout: 0, value: 205_460 },
+        input: Utxo { txid: crate::common::label_hex("tests/coin"), vout: 0, value: 205_460 },
         receipt: receipt(),
-        sealed: Sealed { kid, sealed: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(sealed), holder: bs58::encode(HOLDER).into_string() },
+        sealed: Sealed { kid, sealed: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(sealed), holder: bs58::encode(holder()).into_string() },
         anchor: None,
     }
 }
 
 #[test]
 fn a_private_stamp_is_built_proved_and_its_proof_checks() {
-    let issuer = IssuerKey::from_bytes(&[3; 32]).unwrap();
-    let rk = RequestKey::from_bytes([1; 32]);
+    let issuer = crate::common::issuer("tests/issuer");
+    let rk = crate::common::request_key("tests/request-key");
     let (fvk, receiver) = wallet(11);
     let t0 = Instant::now();
     let built = build_private(&issuer, &rk, &request(&rk, &receiver, 1)).unwrap();
@@ -96,7 +100,7 @@ fn a_private_stamp_is_built_proved_and_its_proof_checks() {
     assert!(!unverified.issuer_verified);
     assert!(unverified.not_checked[0].contains("NOT verified"));
     // not the issuer: refused
-    assert!(check(&bytes, &proof, NetworkType::Test, &[[0x11; 20]], None).unwrap_err().contains("issuer"));
+    assert!(check(&bytes, &proof, NetworkType::Test, &[crate::common::label::<20>("tests/not-an-issuer")], None).unwrap_err().contains("issuer"));
     assert!(check(&bytes, &proof, NetworkType::Test, &[], None).is_err());
     assert_eq!(shown.receipt, receipt());
     assert_eq!(shown.value, 546);
@@ -112,8 +116,8 @@ fn a_private_stamp_is_built_proved_and_its_proof_checks() {
         Proof { action: 1 - proof.action, ..proof.clone() },
         Proof { value: 547, ..proof.clone() },
         Proof { receiver: wallet(12).1, ..proof.clone() },
-        Proof { rseed: [0x33; 32], ..proof.clone() },
-        Proof { txid: [0; 32], ..proof.clone() },
+        Proof { rseed: crate::common::label("tests/wrong-rseed"), ..proof.clone() },
+        Proof { txid: crate::common::label("tests/wrong-txid"), ..proof.clone() },
         Proof { pool: 1, ..proof.clone() },
     ];
     for p in tampered {
@@ -125,14 +129,14 @@ fn a_private_stamp_is_built_proved_and_its_proof_checks() {
 
 #[test]
 fn undeliverable_requests_say_only_that() {
-    let issuer = IssuerKey::from_bytes(&[3; 32]).unwrap();
-    let rk = RequestKey::from_bytes([1; 32]);
+    let issuer = crate::common::issuer("tests/issuer");
+    let rk = crate::common::request_key("tests/request-key");
     let (_, receiver) = wallet(11);
     // wrong key id, wrong request key, garbage, a receiver that is not a valid address
     let mut r = request(&rk, &receiver, 1);
     r.sealed.kid = 2;
     assert_eq!(build_private(&issuer, &rk, &r).unwrap_err(), UNDELIVERABLE);
-    assert_eq!(build_private(&issuer, &RequestKey::from_bytes([2; 32]), &request(&rk, &receiver, 1)).unwrap_err(), UNDELIVERABLE);
+    assert_eq!(build_private(&issuer, &crate::common::request_key("tests/other-request-key"), &request(&rk, &receiver, 1)).unwrap_err(), UNDELIVERABLE);
     let mut r = request(&rk, &receiver, 1);
     r.sealed.sealed = "AAAA".into();
     assert_eq!(build_private(&issuer, &rk, &r).unwrap_err(), UNDELIVERABLE);
@@ -143,8 +147,8 @@ fn undeliverable_requests_say_only_that() {
 
 #[test]
 fn the_branch_must_match_librustzcash() {
-    let issuer = IssuerKey::from_bytes(&[3; 32]).unwrap();
-    let rk = RequestKey::from_bytes([1; 32]);
+    let issuer = crate::common::issuer("tests/issuer");
+    let rk = crate::common::request_key("tests/request-key");
     let (_, receiver) = wallet(11);
     let mut r = request(&rk, &receiver, 1);
     r.consensus_branch_id = u32::from(BranchId::Nu6_2);
@@ -159,8 +163,8 @@ fn the_branch_must_match_librustzcash() {
 
 #[test]
 fn a_coin_too_small_is_refused() {
-    let issuer = IssuerKey::from_bytes(&[3; 32]).unwrap();
-    let rk = RequestKey::from_bytes([1; 32]);
+    let issuer = crate::common::issuer("tests/issuer");
+    let rk = crate::common::request_key("tests/request-key");
     let (_, receiver) = wallet(11);
     let mut r = request(&rk, &receiver, 1);
     r.input.value = 20_546 + 53;

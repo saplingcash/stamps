@@ -4,6 +4,8 @@
 //! Regenerate with: `cargo test --features private --test vectors_private -- --ignored --nocapture`
 #![cfg(feature = "private")]
 
+mod common;
+
 use base64::Engine;
 use serde_json::{json, Value};
 use stamper_core::private::memo::Receipt;
@@ -13,7 +15,15 @@ use stamper_core::record::record_v2;
 fn vectors() -> Value {
     let b64 = |b: &[u8]| base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b);
     let mut seals = Vec::new();
-    for (i, (rk, kid, holder, receiver, esk)) in [([1u8; 32], 1u8, [2u8; 32], [3u8; 43], [4u8; 32]), ([0x11; 32], 7, [0x22; 32], [0x33; 43], [0x44; 32]), ([0xa5; 32], 255, [0; 32], [0xff; 43], [0x5a; 32])].into_iter().enumerate() {
+    use common::label;
+    // two ordinary cases from labels, and the edge case: the largest key id, an all-zero holder and an
+    // all-0xff receiver (the keys still from labels)
+    let cases: [([u8; 32], u8, [u8; 32], [u8; 43], [u8; 32]); 3] = [
+        (label("vectors/seal/0/request-secret"), 1, label("vectors/seal/0/holder"), label("vectors/seal/0/receiver"), label("vectors/seal/0/esk")),
+        (label("vectors/seal/1/request-secret"), 7, label("vectors/seal/1/holder"), label("vectors/seal/1/receiver"), label("vectors/seal/1/esk")),
+        (label("vectors/seal/2/request-secret"), 255, [0; 32], [0xff; 43], label("vectors/seal/2/esk")),
+    ];
+    for (i, (rk, kid, holder, receiver, esk)) in cases.into_iter().enumerate() {
         let k = RequestKey::from_bytes(rk);
         let s = seal(&k.public(), kid, &holder, &receiver, esk).unwrap();
         seals.push(json!({
@@ -29,9 +39,9 @@ fn vectors() -> Value {
         }));
     }
     let receipts: Vec<Value> = [
-        Receipt { ticker: "ROOT".into(), mint: bs58::encode([5u8; 32]).into_string(), burned: 1_250_000_000_000, harvested: 1_234_567, fee: 40_000, signature: bs58::encode([9u8; 64]).into_string(), block_time: 1_790_424_000 },
+        Receipt { ticker: "ROOT".into(), mint: bs58::encode(label::<32>("vectors/receipt/0/mint")).into_string(), burned: 1_250_000_000_000, harvested: 1_234_567, fee: 40_000, signature: bs58::encode(label::<64>("vectors/receipt/0/signature")).into_string(), block_time: 1_790_424_000 },
         Receipt { ticker: "ABCDEFGHIJ".into(), mint: bs58::encode([0xffu8; 32]).into_string(), burned: u64::MAX, harvested: u64::MAX, fee: 9_999_999_999_999_999_999, signature: bs58::encode([0xffu8; 64]).into_string(), block_time: 253_402_300_799 },
-        Receipt { ticker: "S3ED".into(), mint: bs58::encode([1u8; 32]).into_string(), burned: 1, harvested: 40_000, fee: 40_000, signature: bs58::encode([1u8; 64]).into_string(), block_time: 0 },
+        Receipt { ticker: "S3ED".into(), mint: bs58::encode(label::<32>("vectors/receipt/2/mint")).into_string(), burned: 1, harvested: 40_000, fee: 40_000, signature: bs58::encode(label::<64>("vectors/receipt/2/signature")).into_string(), block_time: 0 },
     ]
     .into_iter()
     .map(|r| {
@@ -40,18 +50,18 @@ fn vectors() -> Value {
     })
     .collect();
     // unified addresses (ZIP 316, encoded by zcash_address) and the Orchard receiver each carries
-    use orchard::keys::{FullViewingKey, Scope, SpendingKey};
+    use orchard::keys::{FullViewingKey, Scope};
     use zcash_address::unified::{self, Encoding};
     use zcash_protocol::consensus::NetworkType;
     let mut addresses = Vec::new();
-    for n in [11u8, 12] {
-        let sk = Option::<SpendingKey>::from(SpendingKey::from_bytes([n; 32])).unwrap();
+    for name in ["vectors/address/0", "vectors/address/1"] {
+        let sk = common::spending_key(&format!("{name}/spending-key"));
         let fvk = FullViewingKey::from(&sk);
         let r = fvk.address_at(0u32, Scope::External).to_raw_address_bytes();
         for (net, name) in [(NetworkType::Main, "mainnet"), (NetworkType::Test, "testnet")] {
             let orchard_only = unified::Address::try_from_items(vec![unified::Receiver::Orchard(r)]).unwrap().encode(&net);
-            let with_t = unified::Address::try_from_items(vec![unified::Receiver::P2pkh([n; 20]), unified::Receiver::Orchard(r)]).unwrap().encode(&net);
-            let sapling_t = unified::Address::try_from_items(vec![unified::Receiver::P2pkh([n; 20]), unified::Receiver::Sapling([n; 43])]).unwrap().encode(&net);
+            let with_t = unified::Address::try_from_items(vec![unified::Receiver::P2pkh(label(&format!("{name}/p2pkh"))), unified::Receiver::Orchard(r)]).unwrap().encode(&net);
+            let sapling_t = unified::Address::try_from_items(vec![unified::Receiver::P2pkh(label(&format!("{name}/p2pkh"))), unified::Receiver::Sapling(label(&format!("{name}/sapling-receiver")))]).unwrap().encode(&net);
             addresses.push(json!({ "network": name, "receiver": hex::encode(r), "orchardOnly": orchard_only, "withTransparent": with_t, "noOrchard": sapling_t }));
         }
     }

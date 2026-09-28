@@ -2,6 +2,8 @@
 //! (NU6.3, 0x37A5165B) and for NU7 (0x77190AD9, the value in ZIP 259 at the time of writing) differs
 //! only where ZIP 244 says it must, and a signature for one branch is invalid under the other.
 
+mod common;
+
 use k256::ecdsa::signature::hazmat::PrehashVerifier;
 use stamper_core::address::{hash160, p2pkh_script};
 use stamper_core::build::{build, BuildRequest, Output, Utxo};
@@ -16,8 +18,8 @@ fn request(branch: u32) -> BuildRequest {
         consensus_branch_id: branch,
         expiry_height: 3_600_040,
         marginal_fee: 5_000,
-        inputs: vec![Utxo { txid: "aa".repeat(32), vout: 0, value: 500_000 }],
-        outputs: vec![Output { value: 0, script: format!("6a34{}", "01".repeat(52)) }, Output { value: 546, script: hex::encode(p2pkh_script(&hash160(b"x"))) }],
+        inputs: vec![Utxo { txid: crate::common::label_hex("tests/branches/coin"), vout: 0, value: 500_000 }],
+        outputs: vec![Output { value: 0, script: format!("6a34{}", hex::encode(crate::common::label::<52>("tests/branches/record"))) }, Output { value: 546, script: hex::encode(p2pkh_script(&hash160(b"x"))) }],
     }
 }
 
@@ -27,6 +29,14 @@ fn reparse(hex_tx: &str) -> (u32, Vec<u8>) {
     (u32::from_le_bytes(b[8..12].try_into().unwrap()), b)
 }
 
+/// The coin's txid in the byte order the transaction carries (the request gives it as nodes display it,
+/// byte-reversed).
+fn coin_txid() -> [u8; 32] {
+    let mut t = crate::common::label::<32>("tests/branches/coin");
+    t.reverse();
+    t
+}
+
 fn sighash_for(branch: u32, key: &IssuerKey) -> [u8; 32] {
     // rebuild the unsigned transaction exactly as `build` lays it out (one input, record, postage, change)
     let script = p2pkh_script(&key.pubkey_hash());
@@ -34,9 +44,9 @@ fn sighash_for(branch: u32, key: &IssuerKey) -> [u8; 32] {
         consensus_branch_id: branch,
         lock_time: 0,
         expiry_height: 3_600_040,
-        inputs: vec![TxIn { prevout: OutPoint { txid: [0xaa; 32], index: 0 }, script_sig: vec![], sequence: 0xffff_ffff }],
+        inputs: vec![TxIn { prevout: OutPoint { txid: coin_txid(), index: 0 }, script_sig: vec![], sequence: 0xffff_ffff }],
         outputs: vec![
-            TxOut { value: 0, script: hex::decode(format!("6a34{}", "01".repeat(52))).unwrap() },
+            TxOut { value: 0, script: hex::decode(format!("6a34{}", hex::encode(crate::common::label::<52>("tests/branches/record")))).unwrap() },
             TxOut { value: 546, script: p2pkh_script(&hash160(b"x")) },
             TxOut { value: 500_000 - 546 - 20_000, script: script.clone() },
         ],
@@ -53,7 +63,7 @@ fn signature(b: &[u8]) -> k256::ecdsa::Signature {
 
 #[test]
 fn the_branch_from_the_node_is_written_and_signed_over() {
-    let k = IssuerKey::from_bytes(&[5; 32]).unwrap();
+    let k = crate::common::issuer("tests/branches/issuer-a");
     let a = build(&k, &request(NU6_3)).unwrap();
     let b = build(&k, &request(NU7)).unwrap();
     let (branch_a, bytes_a) = reparse(&a.hex);
@@ -73,7 +83,7 @@ fn the_branch_from_the_node_is_written_and_signed_over() {
 
 #[test]
 fn any_branch_value_works_without_a_code_change() {
-    let k = IssuerKey::from_bytes(&[6; 32]).unwrap();
+    let k = crate::common::issuer("tests/branches/issuer-b");
     for branch in [0xC2D6_D0B4u32, 0xC8E7_1055, 0x4DEC_4DF0, NU6_3, NU7, 0xDEAD_BEEF] {
         let built = build(&k, &request(branch)).unwrap();
         assert_eq!(reparse(&built.hex).0, branch);

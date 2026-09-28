@@ -2,8 +2,9 @@
 //! offline checker must refuse it once the spent coin's value is given, and never claim the issuer without it.
 #![cfg(feature = "private")]
 
-use orchard::keys::{FullViewingKey, Scope, SpendingKey};
-use stamper_core::key::IssuerKey;
+mod common;
+
+use orchard::keys::{FullViewingKey, Scope};
 use stamper_core::private::build::NoSapling;
 use stamper_core::private::memo::Receipt;
 use stamper_core::private::proof::{check, make, Proof};
@@ -19,7 +20,7 @@ use zcash_transparent::builder::TransparentSigningSet;
 use zcash_transparent::bundle::{OutPoint, TxOut};
 
 fn victim_receipt() -> Receipt {
-    Receipt { ticker: "ROOT".into(), mint: bs58::encode([5u8; 32]).into_string(), burned: 1_250_000_000_000, harvested: 1_234_567, fee: 40_000, signature: bs58::encode([9u8; 64]).into_string(), block_time: 1_790_424_000 }
+    Receipt { ticker: "ROOT".into(), mint: bs58::encode(crate::common::label::<32>("tests/mint")).into_string(), burned: 1_250_000_000_000, harvested: 1_234_567, fee: 40_000, signature: bs58::encode(crate::common::label::<64>("tests/harvest-signature")).into_string(), block_time: 1_790_424_000 }
 }
 
 /// The forger builds and signs their own transaction (their key spends their coin; the change pays
@@ -30,9 +31,9 @@ fn victim_receipt() -> Receipt {
 /// checker must not take it for the issuer's.
 #[test]
 fn a_swapped_scriptsig_with_the_same_txid_is_refused_or_flagged() {
-    let issuer = IssuerKey::from_bytes(&[3; 32]).unwrap();
-    let forger = IssuerKey::from_bytes(&[0x77; 32]).unwrap();
-    let sk = Option::<SpendingKey>::from(SpendingKey::from_bytes([31; 32])).unwrap();
+    let issuer = crate::common::issuer("tests/issuer");
+    let forger = crate::common::issuer("tests/forger");
+    let sk = crate::common::spending_key("tests/wallet/31");
     let fvk = FullViewingKey::from(&sk);
     let receiver = fvk.address_at(0u32, Scope::External);
 
@@ -42,7 +43,7 @@ fn a_swapped_scriptsig_with_the_same_txid_is_refused_or_flagged() {
     let pk = signing.add_key(secp256k1::SecretKey::from_slice(forger.secret_bytes().as_ref()).unwrap());
     let forger_addr = TransparentAddress::PublicKeyHash(forger.pubkey_hash());
     let issuer_addr = TransparentAddress::PublicKeyHash(issuer.pubkey_hash());
-    b.add_transparent_p2pkh_input(pk, OutPoint::new([0xcd; 32], 0), TxOut::new(Zatoshis::from_u64(21_100).unwrap(), forger_addr.script().into())).unwrap();
+    b.add_transparent_p2pkh_input(pk, OutPoint::new(crate::common::label("tests/coin"), 0), TxOut::new(Zatoshis::from_u64(21_100).unwrap(), forger_addr.script().into())).unwrap();
     b.add_transparent_null_data_output::<std::convert::Infallible>(&record_v2(&solana_signature(&victim_receipt().signature).unwrap())).unwrap();
     b.add_transparent_output(&issuer_addr, Zatoshis::from_u64(21_100 - 20_000 - 546).unwrap()).unwrap();
     b.add_ironwood_output::<std::convert::Infallible>(None, receiver, Zatoshis::from_u64(546).unwrap(), MemoBytes::from_bytes(&victim_receipt().memo().unwrap()).unwrap()).unwrap();

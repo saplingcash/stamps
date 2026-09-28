@@ -85,7 +85,7 @@ export async function checkProof(p: Params, proof: string, solanaUrl: string, zc
     return fail(String((e as Error).message ?? e));
   }
   if (!shown.issuerVerified) return fail("the issuer's signatures were not verified");
-  if (shown.txid !== txid) return fail("the node returned another transaction");
+  if (shown.txid !== txid) return fail("the node answered with a different transaction than the one the proof names");
   checked.push(...shown.checked, "the issuer key was valid at the transaction's height");
 
   // the harvest on Solana: a private request, deliverable, with exactly the receipt's amounts

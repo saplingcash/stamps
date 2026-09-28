@@ -4,6 +4,7 @@ import { bech32m } from "@scure/base";
 import { f4jumble, f4jumbleInv } from "../src/zcash/f4jumble.ts";
 import { decodeAddress, destinationScript, encodeTransparent } from "../src/zcash/address.ts";
 import { bytesToHex, hexToBytes } from "../src/zcash/tx.ts";
+import { label } from "./helpers/labels.ts";
 
 const load = (f: string) => JSON.parse(readFileSync(new URL(`./fixtures/${f}`, import.meta.url), "utf8")) as unknown[][];
 
@@ -50,14 +51,14 @@ describe("Unified Addresses (ZIP 316), against the official test vectors", () =>
   it("refuses a UA with a MUST-understand metadata item (typecodes 0xE0–0xFC)", () => {
     // a revision-2 transparent-enabled UA: a P2PKH receiver, then metadata item 0xE0
     const hrp = "tu";
-    const items = Uint8Array.from([0x00, 20, ...new Uint8Array(20).fill(9), 0xe0, 1, 0]);
+    const items = Uint8Array.from([0x00, 20, ...label("tests/address/metadata-ua-p2pkh", 20), 0xe0, 1, 0]);
     const pad = new Uint8Array(16);
     pad.set(new TextEncoder().encode(hrp));
     const s = bech32m.encode(hrp, bech32m.toWords(f4jumble(Uint8Array.from([...items, ...pad]))), false);
     const d = decodeAddress(s, "mainnet");
     expect(d.ok).toBe(false);
     // the same UA without the metadata item is accepted
-    const ok = bech32m.encode(hrp, bech32m.toWords(f4jumble(Uint8Array.from([0x00, 20, ...new Uint8Array(20).fill(9), ...pad]))), false);
+    const ok = bech32m.encode(hrp, bech32m.toWords(f4jumble(Uint8Array.from([0x00, 20, ...label("tests/address/metadata-ua-p2pkh", 20), ...pad]))), false);
     expect(decodeAddress(ok, "mainnet")).toMatchObject({ ok: true, destination: { kind: "p2pkh" } });
   });
 });
@@ -71,7 +72,7 @@ describe("transparent and TEX addresses", () => {
     if (t.ok && tex.ok) expect(bytesToHex(t.destination.hash)).toBe(bytesToHex(tex.destination.hash));
   });
   it("round-trips P2PKH and P2SH on both networks, and keeps networks apart", () => {
-    const hash = Uint8Array.from({ length: 20 }, (_, i) => i);
+    const hash = label("tests/address/round-trip", 20);
     for (const network of ["mainnet", "testnet"] as const)
       for (const kind of ["p2pkh", "p2sh"] as const) {
         const a = encodeTransparent(network, { kind, hash });
@@ -84,15 +85,15 @@ describe("transparent and TEX addresses", () => {
     expect(encodeTransparent("testnet", { kind: "p2sh", hash }).startsWith("t2")).toBe(true);
   });
   it("refuses a bad checksum, shielded addresses, whitespace and junk, with a reason", () => {
-    const good = "t1VmmGiyjVNeCjxDZzg7vZmd99WyzVby9yC";
+    const good = encodeTransparent("mainnet", { kind: "p2pkh", hash: label("tests/address/checksum", 20) });
     expect(decodeAddress(good.slice(0, -1) + "D", "mainnet").ok).toBe(false);
     expect(decodeAddress("zs1z7rejlpsa98s2rrrfkwmaxu53e4ue0ulcrw0h4x5g8jl04tak0d3mm47vdtahatqrlkngh9sly", "mainnet")).toMatchObject({ ok: false, reason: expect.stringMatching(/shielded/) });
     expect(decodeAddress(` ${good}`, "mainnet").ok).toBe(false);
     expect(decodeAddress("hello", "mainnet").ok).toBe(false);
   });
   it("builds the standard destination scripts", () => {
-    const hash = new Uint8Array(20).fill(0xab);
-    expect(bytesToHex(destinationScript({ kind: "p2pkh", hash }))).toBe(`76a914${"ab".repeat(20)}88ac`);
-    expect(bytesToHex(destinationScript({ kind: "p2sh", hash }))).toBe(`a914${"ab".repeat(20)}87`);
+    const hash = label("tests/address/destination", 20);
+    expect(bytesToHex(destinationScript({ kind: "p2pkh", hash }))).toBe(`76a914${bytesToHex(hash)}88ac`);
+    expect(bytesToHex(destinationScript({ kind: "p2sh", hash }))).toBe(`a914${bytesToHex(hash)}87`);
   });
 });

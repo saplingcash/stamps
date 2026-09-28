@@ -5,6 +5,12 @@
 use stamper_core::private::proof::{check as check_proof, inspect as inspect_tx, issuers_from_params, make as make_proof, viewing_keys, Proof};
 use wasm_bindgen::prelude::*;
 
+/// Where this module comes from, in a custom section of the WebAssembly binary named "sapling.cash"
+/// (`wasm-objdump -j sapling.cash -s` shows it). Plain text; nothing reads it at run time.
+#[used]
+#[link_section = "sapling.cash"]
+static ORIGIN: [u8; 94] = *b"Sapling stamp proofs, from https://sapling.cash; source: https://github.com/saplingcash/stamps";
+
 fn bytes(tx_hex: &str) -> Result<Vec<u8>, JsError> {
     hex::decode(tx_hex.trim()).map_err(|_| JsError::new("the transaction must be hex"))
 }

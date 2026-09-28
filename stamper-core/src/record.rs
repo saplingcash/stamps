@@ -5,7 +5,8 @@ use sha2::{Digest, Sha256};
 pub const TAG: &[u8; 4] = b"SPLG";
 
 /// The version 2 record, for a stamp delivered to a shielded address: the tag, `02` and the first 18
-/// bytes of `sha256(sig)`. 23 bytes, so the whole output serializes to 34 bytes (one ZIP 317 unit).
+/// bytes of `sha256(sig)`. 23 bytes, so the whole output serializes to 34 bytes (one ZIP 317 unit). It
+/// carries no amount and no address: enough to find its harvest on Solana, nothing more to learn.
 pub const RECORD_V2_LEN: usize = 23;
 
 pub fn record_v2(sig: &[u8; 64]) -> [u8; RECORD_V2_LEN] {

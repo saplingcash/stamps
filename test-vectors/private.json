@@ -3,31 +3,31 @@
   "addresses": [
     {
       "network": "mainnet",
-      "noOrchard": "u1r46h080gyn42k5ax7zc049dp7wv2zh64ypn0war7l8eykd4t3cde0tzs76yhjuxynewh3ryk68ra6rdwcvcywf33uw6wsm3e5d00ks3fz5pdp85gldc9kr3m75hfqyhdaqe0g9qtrhe",
-      "orchardOnly": "u1y7erjmmygp2ndd9rqcn95ny5y38cdtm7mq39xv4p7p9ggsnpmtsn3psqw6fc50r3n85kqfd82s2rqxldzl9cau25vwynyfr2t5epqmxc",
-      "receiver": "e8f7548cb1d5ad2a445ab132235f016d4e0895165e74751b59c86078732214c1e803b0794e6949d2cadab9",
-      "withTransparent": "u19x9gn59grae4hnqj5ttpq6euc28lzckc2r7g0tzgzchm80tyeracyq0qlzytqgft2kg9pz4r24wemx7tm8k3dd3q7ev5jvs5rx3fdhjep6cnl9cnxfy55np39d408r04nyjtkzcuvdg"
+      "noOrchard": "u1u5w67w7e9yfxz4p7v933pjnv9qhs9mm2a878852zvdwvyxqgqsja6pljz5acdcdr642cc5f9yll7zfh9mp6wwsujrhzgvxncl3fjsvct5s7pt6pcysuy58qkesqxkdkk75sksm5e74p",
+      "orchardOnly": "u1vywzvn4s28mas20lwzjmvhkahgw2ynkj4kl0mchrhy48a2q7l034yk2u2pwmf90p5tw0394sxn7k6zvnsxcjqqwv7klc397gwyqmcj9j",
+      "receiver": "665e4d5d43e7ddc8ca8a089bd9cd0618b18f012ece8f918ac229e79c4cff3c8692557b0d87b2540fc64023",
+      "withTransparent": "u1qzv5hrmtl2yt02txx5k9xxnh0982kamv234cp4p54wu724qf0q04pt7nm7aq3d9tesxk50ghcw8af3hyrh7q7xleyv7tuc53l0m5fhdyrsdgqfzyalzvt6l48x5s50ayseh3s2xc3nc"
     },
     {
       "network": "testnet",
-      "noOrchard": "utest1qsvtvc6k3gcnsjz8rfwz3m7j790rj5vuddd8kvas4netmpz4dvjyl840k0jz6he755aej0c86a64qruvvvt5fwhm2fgdxt4jdwlm98qmnj5dy0frs2plmr2djf7zzwveftnvur33sv5",
-      "orchardOnly": "utest1tuxnkpkkgj9gapl62qtea3a9z3vkckdguvu7gnfcdlake6qtj2t6d3pavyxmnvhsn4qmpmn0uxcey5f3puhjdnl2pm4899yc7ug6nw6a",
-      "receiver": "e8f7548cb1d5ad2a445ab132235f016d4e0895165e74751b59c86078732214c1e803b0794e6949d2cadab9",
-      "withTransparent": "utest1vq6yewxv02a0jnfhcz8umhtt5c3gnlen57g40zl4u98d0a0997mp9hwllp6xvt26wnr3qqhyxmv7fdlgyctccsnmqr95sa3avj0rz6gx5748sxusc622j2ewwvzqezhth70l52cpl0u"
+      "noOrchard": "utest1zzzx3chyc8maesrful963pwwxxsl7m22jx6qcad04vr9sgva3dkdghvr3mw9u6uvdmvpftjrvvermnklnchzwfvk2z8c94df5jmdkg9nj8kqae59lz9vs28da4682n7nepty54cy6vl",
+      "orchardOnly": "utest10qgw9asapkhzp0dy6zmmtl7nan87slk66u3nzj4kamg0lw7fjyzmsvwwgtdu9f4f67xth7ufnczxnprrhy3dtvym66uk72ukfgnf8f7w",
+      "receiver": "665e4d5d43e7ddc8ca8a089bd9cd0618b18f012ece8f918ac229e79c4cff3c8692557b0d87b2540fc64023",
+      "withTransparent": "utest1axkhtmmaes0sxf34hl49xl8hn8qnd7g3knlcfqyg5paagf5jkyn7f653g6efexn4vny60u4vm5sh4ysn9p06lanmkrjepcdnd4qv8dwuypmr7p2vt6s25du74yqqqrgfmzh0vr622za"
     },
     {
       "network": "mainnet",
-      "noOrchard": "u1un8wnaqd87lysrafwxga4nmqdga3tn3rue57lhmgwfxzrugpx2q0yfzdvhz2v068edl0ck4gjqq9x4pf4gxfkm9s8ftjuawz6gdrty6ukdztgeh7cjr0w4p6u9t89k0n8xr22nm0val",
-      "orchardOnly": "u1ly3xjxacsdxgdz0p5g2zq2ad67rzxdd00ms2umx33eula84pw8q2sad4ftfv233w0h7lm74ypanrdaqhr6h49q5gdmx2y9uxrcqven23",
-      "receiver": "af97858543f1e928cd7f15739f7ea10ab27239258913f359d83fd21d92df36362c89f0066d73af4480cf91",
-      "withTransparent": "u1dy987rmdn4nnxwkd2235jxxz3pneesh5t3gzauddx59kpjqf3z8mq9a72czagygjk9dyzqjv33zv8m6ly934ppjf52ktqprsc3x0fpaz3jg6ypgtsypy0yml36t42ku28f49um4rg6t"
+      "noOrchard": "u1u5w67w7e9yfxz4p7v933pjnv9qhs9mm2a878852zvdwvyxqgqsja6pljz5acdcdr642cc5f9yll7zfh9mp6wwsujrhzgvxncl3fjsvct5s7pt6pcysuy58qkesqxkdkk75sksm5e74p",
+      "orchardOnly": "u1dvjdx5zmz25wny0unkxayr35fe0yjta0x4ed7rp5qhps6q0ryp6zdw8uv2jc4nddcc47pz2wctedkvmehpxhnqla23gtnwusxvukqx05",
+      "receiver": "8df69af3ad48c7939640c11455ebcc849ee350cbd534b09a01aeaeaae6c296493fc83215f9491184794286",
+      "withTransparent": "u1tf63hdqu3tgstmtg778kxnr7vqfft8mdfzyh7dyt9sas2yhzff6m29snwtq40ksqu8nn9n0wpqwj0tslc9v90wtxec27weg8u8d0wz55t0u2kk38z0lfcy2hyyst03hk798gvefd4c0"
     },
     {
       "network": "testnet",
-      "noOrchard": "utest1zrk608hc89cu22642v3csh4pj00v23dz0j5pn0678csxgwg8k3qttxjruxjcmvmja7fz563nsyf0fc456dl79xtf6f7ze4z0u9fau37alje0yx9uhkjute02qwrnvfuxx4vgjfm5txn",
-      "orchardOnly": "utest193sfa6q0aj6gu8w7g562yum86w0kp5eekq8adfy0kcy8xywgt0r7clv8rwa28q86mn6ma6758z06kv7guvgu5fj2rx7pyccgxuym6q7m",
-      "receiver": "af97858543f1e928cd7f15739f7ea10ab27239258913f359d83fd21d92df36362c89f0066d73af4480cf91",
-      "withTransparent": "utest17cuc2axgek4spue4cek7p78xjjt9qsu6xkppsjzq5kyty999uxa94cz4s30shtg50fepwxaecedw0ssa35s5dt9dujrewvlfx86vv8d93k3wlmckesyc47p35hqm6cal4mcxkdyykk4"
+      "noOrchard": "utest1zzzx3chyc8maesrful963pwwxxsl7m22jx6qcad04vr9sgva3dkdghvr3mw9u6uvdmvpftjrvvermnklnchzwfvk2z8c94df5jmdkg9nj8kqae59lz9vs28da4682n7nepty54cy6vl",
+      "orchardOnly": "utest1d8nz6nkuhukuxdaeczrgk8z6kggn8sm3hsh0va6xe7px59uxuczt8nwm6wn5p36wzm65fftdlj3p82atzucw3w37p9upgjecr5jafncr",
+      "receiver": "8df69af3ad48c7939640c11455ebcc849ee350cbd534b09a01aeaeaae6c296493fc83215f9491184794286",
+      "withTransparent": "utest15nccv9fe60fv77laejzvjdyvmvqkz8gsq7pu0zy5p99e42alr7tufr3lsjgh0p6gthvzxq3wl9ettfyvmf720jhpw4sc50th8ujtgzj5fuzq47e5a9jhkw7y9eeh0dm2zxsqukwzmnq"
     }
   ],
   "receipts": [
@@ -37,12 +37,12 @@
         "burned": "1250000000000",
         "fee": "40000",
         "harvested": "1234567",
-        "mint": "LbUiWL3xVV8hTFYBVdbTNrpDo41NKS6o3LHHuDzjfcY",
-        "signature": "BUguQsv2ZuHus54HAFzjdJHzZBkygAjKhEeYwSG19tUfUyvvz3worsdQCdAXDNjakJHioSiyxhFiDJrm8XpSXRA",
+        "mint": "AZhkb3mvBC9fRyAxxkyu9RrwSPjpJnv84n1mwtsoywnS",
+        "signature": "62jtE8G3RKEvRrLuqeH7xLmaSZsvEjStGyDL7NxySQQTwAh88Vojdp7rwcNHCAnVjXoNd1X9iYN84j6joit8ijff",
         "ticker": "ROOT"
       },
-      "recordV2": "53504c4702aa725e51a9d8e9a8abe3cefa68561d19a4b0",
-      "text": "SPLG/2 private stamp\ncoin $ROOT LbUiWL3xVV8hTFYBVdbTNrpDo41NKS6o3LHHuDzjfcY\nburned 1250000.000000\nharvested 0.01234567 ZEC\nfee 0.00040000 ZEC\nreceived 0.01194567 ZEC\nharvest BUguQsv2ZuHus54HAFzjdJHzZBkygAjKhEeYwSG19tUfUyvvz3worsdQCdAXDNjakJHioSiyxhFiDJrm8XpSXRA\nat 2026-09-26T12:00:00Z\nsapling.cash/stamp/BUguQsv2ZuHus54HAFzjdJHzZBkygAjKhEeYwSG19tUfUyvvz3worsdQCdAXDNjakJHioSiyxhFiDJrm8XpSXRA"
+      "recordV2": "53504c47023d29029c72348859c3c63646c4a46cb4feab",
+      "text": "SPLG/2 private stamp\ncoin $ROOT AZhkb3mvBC9fRyAxxkyu9RrwSPjpJnv84n1mwtsoywnS\nburned 1250000.000000\nharvested 0.01234567 ZEC\nfee 0.00040000 ZEC\nreceived 0.01194567 ZEC\nharvest 62jtE8G3RKEvRrLuqeH7xLmaSZsvEjStGyDL7NxySQQTwAh88Vojdp7rwcNHCAnVjXoNd1X9iYN84j6joit8ijff\nat 2026-09-26T12:00:00Z\nsapling.cash/stamp/62jtE8G3RKEvRrLuqeH7xLmaSZsvEjStGyDL7NxySQQTwAh88Vojdp7rwcNHCAnVjXoNd1X9iYN84j6joit8ijff"
     },
     {
       "receipt": {
@@ -63,47 +63,47 @@
         "burned": "1",
         "fee": "40000",
         "harvested": "40000",
-        "mint": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
-        "signature": "2AXDGYSE4f2sz7tvMMzyHvUfcoJmxudvdhBcmiUSo6ijwfYmfZYsKRxboQMPh3R4kUhXRVdtSXFXMheka4Rc4P2",
+        "mint": "aXfTu23GQxPsPPHhmMqJ7eDnu471kS7UAyaquUykLcb",
+        "signature": "2osQvvETX57iXPCQCfTuy9GcL8Zj5fHrD8QVpudbPAPDV83KwwzhnkeJX3koPdmTF1trCKrhXVjUQPErB7N5HGYK",
         "ticker": "S3ED"
       },
-      "recordV2": "53504c47027c8975e1e60a5c8337f28edf8c33c3b18036",
-      "text": "SPLG/2 private stamp\ncoin $S3ED 4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi\nburned 0.000001\nharvested 0.00040000 ZEC\nfee 0.00040000 ZEC\nreceived 0.00000000 ZEC\nharvest 2AXDGYSE4f2sz7tvMMzyHvUfcoJmxudvdhBcmiUSo6ijwfYmfZYsKRxboQMPh3R4kUhXRVdtSXFXMheka4Rc4P2\nat 1970-01-01T00:00:00Z\nsapling.cash/stamp/2AXDGYSE4f2sz7tvMMzyHvUfcoJmxudvdhBcmiUSo6ijwfYmfZYsKRxboQMPh3R4kUhXRVdtSXFXMheka4Rc4P2"
+      "recordV2": "53504c470212f81d3e31f17115ba60cf177649d85eb2da",
+      "text": "SPLG/2 private stamp\ncoin $S3ED aXfTu23GQxPsPPHhmMqJ7eDnu471kS7UAyaquUykLcb\nburned 0.000001\nharvested 0.00040000 ZEC\nfee 0.00040000 ZEC\nreceived 0.00000000 ZEC\nharvest 2osQvvETX57iXPCQCfTuy9GcL8Zj5fHrD8QVpudbPAPDV83KwwzhnkeJX3koPdmTF1trCKrhXVjUQPErB7N5HGYK\nat 1970-01-01T00:00:00Z\nsapling.cash/stamp/2osQvvETX57iXPCQCfTuy9GcL8Zj5fHrD8QVpudbPAPDV83KwwzhnkeJX3koPdmTF1trCKrhXVjUQPErB7N5HGYK"
     }
   ],
   "seals": [
     {
       "case": 0,
-      "esk": "0404040404040404040404040404040404040404040404040404040404040404",
-      "holder": "8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR",
+      "esk": "ff348770e74fde879e8dfde75c0aaf0bc87fed8b0b1308c2bc17896163996182",
+      "holder": "LC67w6qSeT6UUu17NT6a2fZKTMtN8zXvyix5aYRUNPT",
       "kid": 1,
-      "memo": "sapling-stamp:2:1:rAGyIJ6GNU-4UyN7XeD0-rE8f8v0M6YcAZNpYX_s8Qul2d-TF3i8G0zlD9o8nDe1BjGmEzJVeePSk_4PcwqTSq-RwSSN_qqDWtQl1UxaE6Ll_lK5h71lmSIFUIQ",
-      "receiver": "03030303030303030303030303030303030303030303030303030303030303030303030303030303030303",
-      "requestPublic": "a4e09292b651c278b9772c569f5fa9bb13d906b46ab68c9df9dc2b4409f8a209",
-      "requestSecret": "0101010101010101010101010101010101010101010101010101010101010101",
-      "sealed": "rAGyIJ6GNU-4UyN7XeD0-rE8f8v0M6YcAZNpYX_s8Qul2d-TF3i8G0zlD9o8nDe1BjGmEzJVeePSk_4PcwqTSq-RwSSN_qqDWtQl1UxaE6Ll_lK5h71lmSIFUIQ"
+      "memo": "sapling-stamp:2:1:BfbB2s5DQQfYNrMBkIMk4KIdRQ6-79SCINGXEAkFSSETF924WNRSO3FBvwJ12Cw7Jt-HuqJRwK4PCf7LSZNYabxr6Lqdhy7abkuwHvUlQP47AkUuvPuTqQjUMAU",
+      "receiver": "2fa1c3053d5cde7522d1e852d3c77744a13d24702a0702803153b9d1c43d7de850d032f1d9423f8e2e5cad",
+      "requestPublic": "b79fbd3c9a56f7823b3b1ac5679992b523a54ec0ec81b37f2b455181db2c9a2e",
+      "requestSecret": "c4f7aca2521ef463538cadfd29f80d5cd8f46755410cb88944f8cb81c7c3a9c4",
+      "sealed": "BfbB2s5DQQfYNrMBkIMk4KIdRQ6-79SCINGXEAkFSSETF924WNRSO3FBvwJ12Cw7Jt-HuqJRwK4PCf7LSZNYabxr6Lqdhy7abkuwHvUlQP47AkUuvPuTqQjUMAU"
     },
     {
       "case": 1,
-      "esk": "4444444444444444444444444444444444444444444444444444444444444444",
-      "holder": "3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3",
+      "esk": "4184c407274283a8e5d74867ba3ffb4c9b32495e6adab088a1677e9b97475a87",
+      "holder": "DcqZLdCKgxZB5qG9p4aeE4EGnNYj1a9itcZuPCzWrGkv",
       "kid": 7,
-      "memo": "sapling-stamp:2:7:_y7kVgHsG2cxDHeQQEWFrmlzMe7hwfjPJBlzHB__PmsRQPg72gg5SUvCxMSIlTa9v6n8lwCvvx9jl7gJaHlSuO34PZ7RnNBlEfvTqAkfl_g-p-yDqTU6WMQf0Qk",
-      "receiver": "33333333333333333333333333333333333333333333333333333333333333333333333333333333333333",
-      "requestPublic": "7b4e909bbe7ffe44c465a220037d608ee35897d31ef972f07f74892cb0f73f13",
-      "requestSecret": "1111111111111111111111111111111111111111111111111111111111111111",
-      "sealed": "_y7kVgHsG2cxDHeQQEWFrmlzMe7hwfjPJBlzHB__PmsRQPg72gg5SUvCxMSIlTa9v6n8lwCvvx9jl7gJaHlSuO34PZ7RnNBlEfvTqAkfl_g-p-yDqTU6WMQf0Qk"
+      "memo": "sapling-stamp:2:7:g2RO66FDA7rxlqCCEs5c_0qTIT6zlHYriTMcgRIKgjVvb3kjhWG2vErJAx_S-5ZWLp8HXIQhm3Liy51pW9DYnBNUjN4dvP2DkkFzaex5SBHE3rwHEog3mdNxQdY",
+      "receiver": "d09aafd5836e15832561f08eb501aaf49540d30357f1d09c93be11a49eedbb1a7203f6b50d3b6862698e9f",
+      "requestPublic": "29f0cf68598a05b04bdc0b595177aad8538b9934ec85ad586ee83605c7cdae51",
+      "requestSecret": "7863a3d262c3c258899cc0f8bc95b8dd45e27a82f6e7259c8cae62305649cd56",
+      "sealed": "g2RO66FDA7rxlqCCEs5c_0qTIT6zlHYriTMcgRIKgjVvb3kjhWG2vErJAx_S-5ZWLp8HXIQhm3Liy51pW9DYnBNUjN4dvP2DkkFzaex5SBHE3rwHEog3mdNxQdY"
     },
     {
       "case": 2,
-      "esk": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+      "esk": "4d85490514445f46e758dceacbbeee2e88dd4ddf5011cf77a10dc78a9341a579",
       "holder": "11111111111111111111111111111111",
       "kid": 255,
-      "memo": "sapling-stamp:2:255:sNCPNbRoM4FImvsygl5ZFS1H0ZvJ4FDW1alUmEydHiztja87IGLnrfyunfi_q7u-0sRv9F1-MHDaezRHWuAxnZkpyBUyXSPnbNQGhMrnL0r8OnZ6Us0atMxOs9E",
+      "memo": "sapling-stamp:2:255:iZZPA3jZc9lJqQme6c4KC_nmZxwr53jMWkTgScPLjh-1lty1EcviIXI6ZOBbicaWVt-v9tkJZdWx1LlLO3-X6tig8R-oRezbbwOLAw-srkd5NMXNNZ0UXFhYVK8",
       "receiver": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-      "requestPublic": "5fef13fc76023a9ee6ded987b6aa93958cdc2097ef9fc845d5319c9ca100d35e",
-      "requestSecret": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
-      "sealed": "sNCPNbRoM4FImvsygl5ZFS1H0ZvJ4FDW1alUmEydHiztja87IGLnrfyunfi_q7u-0sRv9F1-MHDaezRHWuAxnZkpyBUyXSPnbNQGhMrnL0r8OnZ6Us0atMxOs9E"
+      "requestPublic": "98d46d7fb254e275b4fdd22b9c31649f4e7bf32394ba0d7a46410042c1410f31",
+      "requestSecret": "62e2485cc166b684fa55f5d23efd63ebef67e5eb92380fff024794a82bb2201f",
+      "sealed": "iZZPA3jZc9lJqQme6c4KC_nmZxwr53jMWkTgScPLjh-1lty1EcviIXI6ZOBbicaWVt-v9tkJZdWx1LlLO3-X6tig8R-oRezbbwOLAw-srkd5NMXNNZ0UXFhYVK8"
     }
   ]
 }

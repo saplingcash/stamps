@@ -1,20 +1,22 @@
 //! Fees (ZIP 317), change, the refusals, and the key file.
 
+mod common;
+
 use stamper_core::address::{hash160, p2pkh_address, p2pkh_script, Network};
 use stamper_core::build::{build, zip317_fee, BuildRequest, Output, Utxo};
 use stamper_core::key::IssuerKey;
 
 fn key() -> IssuerKey {
-    IssuerKey::from_bytes(&[3; 32]).unwrap()
+    crate::common::issuer("tests/issuer")
 }
 fn record() -> Output {
-    Output { value: 0, script: format!("6a34{}", "02".repeat(52)) }
+    Output { value: 0, script: format!("6a34{}", hex::encode(crate::common::label::<52>("tests/build/record"))) }
 }
 fn postage_p2pkh() -> Output {
     Output { value: 546, script: hex::encode(p2pkh_script(&hash160(b"h"))) }
 }
 fn req(value: u64, outputs: Vec<Output>, fee: u64) -> BuildRequest {
-    BuildRequest { consensus_branch_id: 0x37A5_165B, expiry_height: 100, marginal_fee: fee, inputs: vec![Utxo { txid: "bb".repeat(32), vout: 2, value }], outputs }
+    BuildRequest { consensus_branch_id: 0x37A5_165B, expiry_height: 100, marginal_fee: fee, inputs: vec![Utxo { txid: crate::common::label_hex("tests/build/coin"), vout: 2, value }], outputs }
 }
 
 #[test]
@@ -98,7 +100,7 @@ fn the_cli_prints_the_address_but_never_the_key() {
     // sign from stdin
     let mut child = std::process::Command::new(bin).args(["sign", "--key"]).arg(&path).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).spawn().unwrap();
     use std::io::Write;
-    let body = serde_json::json!({ "consensusBranchId": 0x37A5165Bu32, "expiryHeight": 10, "marginalFee": 5000, "inputs": [{ "txid": "cc".repeat(32), "vout": 0, "value": 300000 }], "outputs": [{ "value": 546, "script": postage_p2pkh().script }] });
+    let body = serde_json::json!({ "consensusBranchId": 0x37A5165Bu32, "expiryHeight": 10, "marginalFee": 5000, "inputs": [{ "txid": crate::common::label_hex("tests/build/cli-coin"), "vout": 0, "value": 300000 }], "outputs": [{ "value": 546, "script": postage_p2pkh().script }] });
     child.stdin.take().unwrap().write_all(body.to_string().as_bytes()).unwrap();
     let out = child.wait_with_output().unwrap();
     assert!(out.status.success());

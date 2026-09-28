@@ -1,5 +1,7 @@
 //! The sealed receiver (SPEC.md §9.2): the shielded receiver a harvest names, encrypted to the
-//! stamper's request key, so that only the stamper can read it.
+//! stamper's request key, so that only the stamper can read it. Think of a letter posted to the stamper:
+//! anyone can see that it was posted and for which harvest, only the stamper's signer can read the
+//! address written inside.
 //!
 //! ```text
 //! plaintext  = 0x03 || receiver (43 bytes)

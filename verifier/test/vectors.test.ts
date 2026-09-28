@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { base58 } from "@scure/base";
 import { decodeRecord, encodeRecord, signatureHash } from "../src/record.ts";
 import { bytesToHex, hexToBytes } from "../src/zcash/tx.ts";
+import { recordVectors } from "./helpers/record-vectors.ts";
 
 interface Vector {
   description: string;
@@ -17,6 +18,9 @@ interface Vector {
 const vectors = JSON.parse(readFileSync(new URL("../../test-vectors/records.json", import.meta.url), "utf8")) as { vectors: Vector[] };
 
 describe("record test vectors", () => {
+  it("the file is what helpers/record-vectors.ts writes (signatures from their labels)", () => {
+    expect(vectors).toEqual(recordVectors());
+  });
   it.each(vectors.vectors.map((v) => [v.description, v] as const))("%s", (_d, v) => {
     const rec = encodeRecord({ sigHash: signatureHash(base58.decode(v.signature)), burned: BigInt(v.burned), harvested: BigInt(v.harvested), ticker: v.ticker });
     expect(bytesToHex(rec)).toBe(v.record);
