@@ -182,3 +182,34 @@ export function refundTx(p: Params, requestSig: string, to: string, amount: bigi
     },
   };
 }
+
+export interface ExitOpts {
+  signature?: string;
+  holder?: string;
+  index?: number;
+  sent?: bigint;
+  blockTime?: number;
+  memo?: string | null;
+  authority?: string;
+  transfers?: number;
+}
+
+/** A shielded exit as the site builds it (SPEC.md §10.2): one ZEC transfer from the holder to the bridge, one exit memo. */
+export function exitTx(p: Params, o: ExitOpts = {}): RpcTransaction {
+  const holder = o.holder ?? key();
+  const keys = [holder, key(), key(), p.solana.zecMint, p.solana.tokenProgram, MEMO_PROGRAM, o.authority ?? holder];
+  const transfer = { programIdIndex: 4, accounts: [1, 3, 2, 6], data: base58.encode(Uint8Array.from([12, ...u64le(o.sent ?? 500_000n), 8])) };
+  const memo = o.memo === undefined ? `sapling-exit:1:1:${o.index ?? 0}:${"A".repeat(123)}` : o.memo;
+  return {
+    slot: 3000,
+    blockTime: o.blockTime ?? 1_800_000_000,
+    meta: { err: null, logMessages: [], loadedAddresses: { writable: [], readonly: [] } },
+    transaction: {
+      signatures: [o.signature ?? sig()],
+      message: {
+        accountKeys: keys,
+        instructions: [...Array.from({ length: o.transfers ?? 1 }, () => transfer), ...(memo === null ? [] : [{ programIdIndex: 5, accounts: [], data: base58.encode(new TextEncoder().encode(memo)) }])],
+      },
+    },
+  };
+}

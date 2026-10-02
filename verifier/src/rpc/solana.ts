@@ -1,6 +1,6 @@
 /** Reads the fee account's history from a Solana RPC and classifies each transaction (SPEC.md §2, §5). */
 import { rpc } from "./jsonrpc.ts";
-import { classify, type Refund, type Request, type RpcTransaction } from "../solana/tx.ts";
+import { classify, classifyExit, type ExitRequest, type Refund, type Request, type RpcTransaction } from "../solana/tx.ts";
 import type { Params } from "../params.ts";
 
 export interface SolanaRead {
@@ -37,6 +37,37 @@ export async function readSolana(url: string, p: Params, log: (s: string) => voi
     const c = classify(tx, p);
     if (c.kind === "request") out.requests.push(c.request);
     else if (c.kind === "refund") out.refunds.push(c.refund);
+    else out.ignored.push({ signature: sig, reason: c.reason });
+  }
+  return out;
+}
+
+export interface ExitsRead {
+  exits: ExitRequest[];
+  unreadable: string[];
+  ignored: { signature: string; reason: string }[];
+}
+
+/**
+ * Reads the given exit transactions (SPEC.md §10.2). An exit names no account of Sapling's on Solana, so the
+ * exits to check are given; the Zcash side is complete on its own: every payout transaction from an order
+ * address must name given exits, or it is reported (`buildPayoutLedger`, V1).
+ */
+export async function readExitRequests(url: string, p: Params, signatures: string[]): Promise<ExitsRead> {
+  const out: ExitsRead = { exits: [], unreadable: [], ignored: [] };
+  for (const sig of [...new Set(signatures)]) {
+    let tx: RpcTransaction | null = null;
+    try {
+      tx = await rpc<RpcTransaction | null>(url, "getTransaction", [sig, { encoding: "json", maxSupportedTransactionVersion: 0, commitment: "finalized" }]);
+    } catch {
+      /* unreadable below */
+    }
+    if (!tx) {
+      out.unreadable.push(sig);
+      continue;
+    }
+    const c = classifyExit(tx, p);
+    if (c.kind === "exit") out.exits.push(c.exit);
     else out.ignored.push({ signature: sig, reason: c.reason });
   }
   return out;

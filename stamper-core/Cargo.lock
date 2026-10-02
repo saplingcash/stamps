@@ -1269,6 +1269,7 @@ dependencies = [
  "chacha20poly1305",
  "hex",
  "hkdf",
+ "hmac 0.12.1",
  "jubjub",
  "k256",
  "orchard",
@@ -1288,6 +1289,7 @@ dependencies = [
  "zcash_script",
  "zcash_transparent",
  "zeroize",
+ "zip32",
 ]
 
 [[package]]

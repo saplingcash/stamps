@@ -1,5 +1,5 @@
 {
-  "_comment": "Mainnet: Solana mainnet-beta and Zcash mainnet. The fee account is the ZEC token account of the fee wallet (feeOwner), which signs refunds; the issuer is the stamper's P2PKH address from the height its key was made.",
+  "_comment": "Mainnet: Solana mainnet-beta and Zcash mainnet. The fee account is the ZEC token account of the fee wallet (feeOwner), which signs refunds; the issuer is the stamper's P2PKH address from the height its key was made. The exit keys are the exit account public keys whose order addresses pay payout stamps (SPEC.md §10.1), each from the height of the first coin delivered to one of its order addresses.",
   "solana": {
     "programId": "A9zFnNZpVjBbcE1SAPY92Z6H7WhicysLNPYPpDz15UxF",
     "zecMint": "A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS",
@@ -21,6 +21,18 @@
         "id": 1,
         "x25519": "1b6712d851e94fb7a5c07293c298488545e2ebe9583c500ec026b3f6ba513f7a",
         "from": 1790611200
+      }
+    ],
+    "exitKeys": [
+      {
+        "account": 0,
+        "pubkey": "e67862fdeb3f6321b3a0632f62997d416e04e02ef91e7947e528b82bab7d692202761be0a902f7e9f582e70f4fbc0a653b0d90940c6a5edd5c8e7381b94dd8757f",
+        "fromHeight": 3499973
+      },
+      {
+        "account": 1,
+        "pubkey": "29768824dfc70b2055cdc455003be2ac4b7e54a7a76f0fb4b4817f8aa58fb47103e4042b70f0991afcd9efff5240e55c23035c3343b7fbe04f718e2e3fa82dac60",
+        "fromHeight": 3502865
       }
     ]
   },

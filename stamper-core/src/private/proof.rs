@@ -125,7 +125,7 @@ pub fn issuers_from_params(json: &str) -> Result<(NetworkType, Vec<[u8; 20]>), S
     Ok((net, hashes))
 }
 
-mod sig {
+pub(crate) mod sig {
     use zcash_primitives::transaction::sighash::{signature_hash, SignableInput};
     use zcash_primitives::transaction::txid::TxIdDigester;
     use zcash_primitives::transaction::{Authorization, Transaction, TransactionData};
@@ -238,7 +238,7 @@ pub fn header_branch(tx: &[u8]) -> Result<BranchId, String> {
     zcash_delivery_proof::header_branch(tx).map_err(|e| e.to_string())
 }
 
-fn read_tx(tx: &[u8]) -> Result<Transaction, String> {
+pub(crate) fn read_tx(tx: &[u8]) -> Result<Transaction, String> {
     let t = Transaction::read(tx, header_branch(tx)?).map_err(|e| format!("not a transaction: {e}"))?;
     let mut back = Vec::new();
     t.write(&mut back).map_err(|e| e.to_string())?;

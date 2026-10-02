@@ -1,4 +1,4 @@
-//! Stamp proofs for private stamps (SPEC.md §9.6). No network code: the stamp transaction's raw hex
+//! Stamp proofs for private stamps (SPEC.md §9.6) and payout stamps (§10.5). No network code: the stamp transaction's raw hex
 //! is passed in (from any node the user chooses); keys are read from a file, never from the command
 //! line.
 //!
@@ -14,6 +14,13 @@
 //! The parameter file (params/<network>.json) names the published issuers: a transaction not spent by
 //! one of them fails. Offline, this tool cannot see whether the transaction is mined or read the Solana
 //! harvest; it says so in `notChecked`. The verifier's `check-proof` command checks those too.
+//!
+//! Payout stamps (SPEC.md §10.5): the parameter file's `zcash.exitKeys` name the published exit keys.
+//!   stamp-proof make  --payout --index <order index> [--account <0|1>] --tx <file> --params <file> --viewing-key-file <file>
+//!                     # a payout stamp's proof, splg-proof:2 (the exit's Solana memo names its order index)
+//!   stamp-proof check --tx <file> --params <file> --proof splg-proof:2:… [--spent-values <zat,…>]
+//!                     # with the spent values, the order address's signatures and the receipt's bridged amount are checked too
+//!
 //!   stamp-proof testwallet --network testnet --viewing-key-out <file>
 //!                     # testnet only: a fresh receiving address (printed), its UFVK (written 0600) and
 //!                     # its UIVK (<file>.uivk, 0600); no spending key is kept
@@ -22,6 +29,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use stamper_core::payout::proof as payout;
 use stamper_core::private::proof::{check, issuers_from_params, make, receiver_address, viewing_keys, Proof};
 use zcash_address::unified::{self, Encoding};
 use zcash_protocol::consensus::NetworkType;
@@ -49,9 +57,44 @@ fn network(args: &[String]) -> Result<NetworkType, String> {
     }
 }
 
+fn exit_keys(args: &[String]) -> Result<(NetworkType, Vec<payout::ExitKey>), String> {
+    let path = opt(args, "--params").ok_or("--params <parameter file> is required (it names the published exit keys)")?;
+    payout::exit_keys_from_params(&fs::read_to_string(path).map_err(|e| format!("cannot read --params: {e}"))?)
+}
+
+fn spent_values(args: &[String]) -> Result<Option<Vec<u64>>, String> {
+    opt(args, "--spent-values").map(|s| s.split(',').map(|v| v.trim().parse::<u64>().map_err(|_| "--spent-values takes zatoshi amounts, comma-separated".to_string())).collect::<Result<Vec<_>, _>>()).transpose()
+}
+
 fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
+    let payout_proof = opt(&args, "--proof").is_some_and(|p| p.trim().starts_with(payout::PREFIX));
     match args.get(1).map(String::as_str).unwrap_or("") {
+        "make" if args.iter().any(|a| a == "--payout") => {
+            let tx = tx_bytes(&args)?;
+            let path = opt(&args, "--viewing-key-file").ok_or("--viewing-key-file <file> is required (a key is never taken from the command line)")?;
+            let index = opt(&args, "--index").ok_or("--index <the exit's order index> is required")?.parse::<u32>().map_err(|_| "--index is a number")?;
+            let account = opt(&args, "--account").map(|a| a.parse::<u8>().map_err(|_| "--account is 0 or 1".to_string())).transpose()?.unwrap_or(0);
+            let (net, keys) = exit_keys(&args)?;
+            let (key_net, ivks) = viewing_keys(&fs::read_to_string(path).map_err(|_| "cannot read the viewing key file")?)?;
+            if key_net != net {
+                return Err("the viewing key is for another network than the parameter file".into());
+            }
+            let p = payout::make(&tx, &ivks, account, index)?;
+            let shown = payout::check(&tx, &p, net, &keys, None)?;
+            println!("{}", p.encode());
+            eprintln!("delivered to {}\n{}", shown.address, shown.receipt.text()?);
+        }
+        "check" if payout_proof => {
+            let tx = tx_bytes(&args)?;
+            let p = payout::PayoutProof::decode(&opt(&args, "--proof").unwrap_or_default())?;
+            let (net, keys) = exit_keys(&args)?;
+            let shown = payout::check(&tx, &p, net, &keys, spent_values(&args)?.as_deref())?;
+            if !shown.inputs_verified {
+                eprintln!("NOTE: the order address's signatures were NOT verified (no --spent-values): see notChecked");
+            }
+            println!("{}", serde_json::to_string_pretty(&shown).map_err(|e| e.to_string())?);
+        }
         "make" => {
             let tx = tx_bytes(&args)?;
             let path = opt(&args, "--viewing-key-file").ok_or("--viewing-key-file <file> is required (a key is never taken from the command line)")?;
@@ -108,7 +151,7 @@ fn run() -> Result<(), String> {
             opts.open(&uivk_path).and_then(|mut f| f.write_all(format!("{uivk}\n").as_bytes())).map_err(|e| e.to_string())?;
             println!("{}", receiver_address(&addr, NetworkType::Test));
         }
-        _ => return Err("usage: stamp-proof make|check|testwallet …".into()),
+        _ => return Err("usage: stamp-proof make [--payout]|check|testwallet …".into()),
     }
     Ok(())
 }

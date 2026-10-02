@@ -10,7 +10,8 @@ import { inspectTx, type Inspected } from "./zcash/inspect.ts";
 import { decodeAddress, destinationScript } from "./zcash/address.ts";
 import { bytesToHex, equalBytes, hexToBytes, isOpReturn, p2pkhSpenderHash, parseTransparent, recordPayload } from "./zcash/tx.ts";
 import { POSTAGE_ZAT, type Params } from "./params.ts";
-import type { Refund, Request } from "./solana/tx.ts";
+import type { ExitRequest, Refund, Request } from "./solana/tx.ts";
+import { exitHash, exitKeysAt, orderHash, recordV3Hashes } from "./payout.ts";
 
 export interface ZcashTxInfo {
   txid: string;
@@ -261,4 +262,150 @@ function privateCandidate(p: Params, z: ZcashTxInfo, byHashV2: Map<string, Reque
   if (refundTime !== undefined && z.time !== undefined && z.time > refundTime) return reject("V5: mined after the request was refunded");
   if (stampOf.has(r.signature)) return reject(`V4: a duplicate; the stamp of this request is ${stampOf.get(r.signature)!.id}`);
   return { id: z.txid, height: z.height!, request: r.signature, mint: r.mint, ticker: "", burned: r.burned, harvested: r.harvested, fee: r.feePaid, received: r.harvested - r.feePaid, address: "", mode: "private" };
+}
+
+// ---------------------------------------------------------------- payout stamps (SPEC.md §10)
+
+export interface PayoutStamp {
+  /** the Zcash txid (a forward of k exits is the payout stamp of each) */
+  id: string;
+  height: number;
+  /** the exit's Solana signature */
+  exit: string;
+  holder: string;
+  index: number;
+  sent: bigint;
+  /** this exit's place in the record, and how many exits the record names */
+  position: number;
+  exits: number;
+  /** zatoshi the transaction put into the Ironwood pool, for all its exits */
+  intoPool: bigint;
+}
+export type PayoutState = "stamped" | "pending" | "unstamped" | "unresolved";
+export interface PayoutLedger {
+  stamps: PayoutStamp[];
+  states: { exit: string; state: PayoutState }[];
+  rejected: Rejected[];
+  totals: { exits: number; stamped: number; pending: number; unstamped: number; unresolved: number; sent: bigint; intoPool: bigint };
+}
+
+/**
+ * The payout stamps (SPEC.md §10.4): given the exit requests read from Solana and the transactions spent from
+ * order addresses read from Zcash, decide which are valid payout stamps and each exit's state. Pure: no network
+ * (the v6 reader must be loaded). An exit without a payout stamp is not a broken rule: the bridge may have
+ * refunded it on Solana, or it was paid out another way (§10.6).
+ */
+export function buildPayoutLedger(p: Params, exits: ExitRequest[], zcashTxs: ZcashTxInfo[], now: number, unresolvedExits: string[] = []): PayoutLedger {
+  const rejected: Rejected[] = [];
+  const byHash = new Map<string, ExitRequest[]>();
+  for (const e of exits) {
+    const h = bytesToHex(exitHash(base58.decode(e.signature)));
+    byHash.set(h, [...(byHash.get(h) ?? []), e]);
+  }
+  const ordered = [...zcashTxs].sort((a, b) => (a.height ?? Infinity) - (b.height ?? Infinity) || a.index - b.index);
+  const stampOf = new Map<string, PayoutStamp>();
+  for (const z of ordered) {
+    const reject = (reason: string) => rejected.push({ txid: z.txid, reason });
+    if (z.height === null || z.confirmations < p.zcash.confirmations) {
+      reject("Z1: not final yet");
+      continue;
+    }
+    if ((z.rawHex.length >= 8 ? txVersion(z.rawHex) : 0) !== 6) {
+      reject("P1: not a v6 transaction");
+      continue;
+    }
+    let t: Inspected;
+    try {
+      t = inspectTx(z.rawHex);
+    } catch (e) {
+      if (/not loaded/.test((e as Error).message)) throw e;
+      reject(`P1: ${(e as Error).message}`);
+      continue;
+    }
+    if (t.txid !== z.txid) {
+      reject("P1: the transaction's own txid is not the one listed");
+      continue;
+    }
+    if (t.sapling || t.sprout || t.orchard) {
+      reject("P2: the transaction has a Sapling, Sprout or Orchard part");
+      continue;
+    }
+    if (!t.ironwood || t.ironwood.valueBalance >= 0) {
+      reject("P2: the transaction puts nothing into the Ironwood pool (a transparent payout carries no receipt)");
+      continue;
+    }
+    if (t.outputs.length !== 1) {
+      reject(`P2: ${t.outputs.length} transparent outputs (a payout stamp has one: the record)`);
+      continue;
+    }
+    const hashes = recordV3Hashes(hexToBytes(t.outputs[0]!.script));
+    if (!hashes) {
+      reject("P2: the transparent output is not a version 3 record");
+      continue;
+    }
+    const hexes = hashes.map(bytesToHex);
+    if (new Set(hexes).size !== hexes.length || hashes.length > t.ironwood.actions) {
+      reject("P2: the record names one exit twice, or more exits than the Ironwood part has actions");
+      continue;
+    }
+    // P3: the inputs, in one run of one key per exit, in the record's order
+    const keyHashes = t.inputs.map((i) => p2pkhSpenderHash(hexToBytes(i.scriptSig)));
+    if (!keyHashes.length || keyHashes.some((h) => h === null)) {
+      reject("P3: an input is not a P2PKH spend");
+      continue;
+    }
+    const runs: string[] = [];
+    let split = false;
+    for (const h of keyHashes.map((x) => bytesToHex(x!))) {
+      if (runs[runs.length - 1] === h) continue;
+      if (runs.includes(h)) split = true;
+      runs.push(h);
+    }
+    if (split || runs.length !== hashes.length) {
+      reject(`P3: the inputs are not one run of one key per exit (${runs.length} runs, ${hashes.length} exits)`);
+      continue;
+    }
+    // V1, V2: each hash names exactly one exit, whose order address (under an exit key valid here) spends its run
+    const keys = exitKeysAt(p, 0, z.height);
+    const named: ExitRequest[] = [];
+    let why = "";
+    for (const [j, h] of hexes.entries()) {
+      const m = byHash.get(h) ?? [];
+      if (m.length !== 1) {
+        why = m.length ? "V1: an exit hash matches more than one exit" : "V1: no exit has this hash";
+        break;
+      }
+      const e = m[0]!;
+      if (!keys.some((k) => bytesToHex(orderHash(hexToBytes(k.pubkey), e.index)) === runs[j])) {
+        why = `V2: exit ${j}'s inputs are not spent by order ${e.index}'s address of an exit key valid at this height`;
+        break;
+      }
+      named.push(e);
+    }
+    if (why) {
+      reject(why);
+      continue;
+    }
+    const dup = named.find((e) => stampOf.has(e.signature));
+    if (dup) {
+      reject(`V4: a duplicate; the payout stamp of ${dup.signature} is ${stampOf.get(dup.signature)!.id}`);
+      continue;
+    }
+    for (const [j, e] of named.entries()) stampOf.set(e.signature, { id: z.txid, height: z.height, exit: e.signature, holder: e.holder, index: e.index, sent: e.sent, position: j, exits: named.length, intoPool: BigInt(-t.ironwood.valueBalance) });
+  }
+  const unresolved = new Set(unresolvedExits);
+  const states: PayoutLedger["states"] = exits.map((e) => ({
+    exit: e.signature,
+    state: unresolved.has(e.signature) ? "unresolved" : stampOf.has(e.signature) ? "stamped" : now - e.blockTime < p.refundAfterDays * 86_400 ? "pending" : "unstamped",
+  }));
+  const known = new Set(exits.map((e) => e.signature));
+  for (const s of unresolved) if (!known.has(s)) states.push({ exit: s, state: "unresolved" });
+  const count = (s: PayoutState) => states.filter((x) => x.state === s).length;
+  const stamps = [...stampOf.values()];
+  return {
+    stamps,
+    states,
+    rejected,
+    totals: { exits: exits.length, stamped: count("stamped"), pending: count("pending"), unstamped: count("unstamped"), unresolved: count("unresolved"), sent: exits.reduce((a, e) => a + e.sent, 0n), intoPool: [...new Map(stamps.map((s) => [s.id, s.intoPool])).values()].reduce((a, v) => a + v, 0n) },
+  };
 }

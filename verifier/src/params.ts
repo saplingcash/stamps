@@ -15,10 +15,21 @@ export interface FeeEntry {
   /** ZEC base units (8 decimals), as a decimal string */
   amount: string;
 }
+/** A published exit key (SPEC.md §10.1): order addresses are its external children `0/<index>`. */
+export interface ExitKey {
+  /** the exit key's account: 0 pays exits made on Sapling's site */
+  account: number;
+  /** 65 bytes, hex: the chain code, then the compressed secp256k1 public key */
+  pubkey: string;
+  fromHeight: number;
+  /** inclusive; absent while the key is current */
+  toHeight?: number;
+}
 export interface Params {
   solana: { programId: string; zecMint: string; tokenProgram: string; feeAccount: string; feeOwner: string };
   /** `requestKeys`: the keys private requests are sealed to (SPEC.md §9.2), append-only */
-  zcash: { network: ZcashNetwork; issuers: Issuer[]; confirmations: number; requestKeys?: RequestKey[] };
+  /** `exitKeys`: the exit keys whose order addresses pay payout stamps (SPEC.md §10.1), append-only */
+  zcash: { network: ZcashNetwork; issuers: Issuer[]; confirmations: number; requestKeys?: RequestKey[]; exitKeys?: ExitKey[] };
   fees: FeeEntry[];
   refundAfterDays: number;
 }
@@ -52,6 +63,12 @@ export function checkParams(p: Params): string[] {
     if (!Number.isInteger(k.id) || k.id < 1 || k.id > 255) problems.push(`zcash.requestKeys: id ${k.id} is not 1 to 255`);
     if (!/^[0-9a-f]{64}$/.test(k.x25519 ?? "")) problems.push(`zcash.requestKeys: key ${k.id} is not 32 bytes of lowercase hex`);
     if (k.to !== undefined && k.to <= k.from) problems.push(`zcash.requestKeys: key ${k.id} ends before it starts`);
+  }
+  for (const k of p.zcash.exitKeys ?? []) {
+    if (!Number.isInteger(k.account) || k.account < 0 || k.account > 255) problems.push(`zcash.exitKeys: account ${k.account} is not 0 to 255`);
+    if (!/^[0-9a-f]{64}0[23][0-9a-f]{64}$/.test(k.pubkey ?? "")) problems.push(`zcash.exitKeys: account ${k.account}'s key is not 65 bytes of lowercase hex (chain code, compressed key)`);
+    if (!Number.isInteger(k.fromHeight) || k.fromHeight < 1) problems.push(`zcash.exitKeys: account ${k.account}'s fromHeight is not a height`);
+    if (k.toHeight !== undefined && !(Number.isInteger(k.toHeight) && k.toHeight >= k.fromHeight)) problems.push(`zcash.exitKeys: account ${k.account}'s key ends before it starts`);
   }
   return problems;
 }

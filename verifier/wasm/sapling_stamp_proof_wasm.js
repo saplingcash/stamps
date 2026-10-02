@@ -39,6 +39,44 @@ export function check(tx_hex, proof, params_json, spent_values) {
 }
 
 /**
+ * Checks a payout stamp proof (`splg-proof:2`, SPEC.md §10.5) against the transaction and the parameter file
+ * (JSON text, which names the published exit keys); returns what it shows, what was checked and what was
+ * not, as JSON. `spent_values` as for `check`: without them the order address's signatures and the
+ * receipt's bridged amount are NOT verified, and the result says so.
+ * @param {string} tx_hex
+ * @param {string} proof
+ * @param {string} params_json
+ * @param {string} spent_values
+ * @returns {string}
+ */
+export function check_payout(tx_hex, proof, params_json, spent_values) {
+    let deferred6_0;
+    let deferred6_1;
+    try {
+        const ptr0 = passStringToWasm0(tx_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(proof, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(params_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(spent_values, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len3 = WASM_VECTOR_LEN;
+        const ret = wasm.check_payout(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        var ptr5 = ret[0];
+        var len5 = ret[1];
+        if (ret[3]) {
+            ptr5 = 0; len5 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred6_0 = ptr5;
+        deferred6_1 = len5;
+        return getStringFromWasm0(ptr5, len5);
+    } finally {
+        wasm.__wbindgen_free(deferred6_0, deferred6_1, 1);
+    }
+}
+
+/**
  * The transaction as the stamp rules read it, as JSON (txid computed here).
  * @param {string} tx_hex
  * @returns {string}
@@ -79,6 +117,37 @@ export function make(tx_hex, viewing_key) {
         const ptr1 = passStringToWasm0(viewing_key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len1 = WASM_VECTOR_LEN;
         const ret = wasm.make(ptr0, len0, ptr1, len1);
+        var ptr3 = ret[0];
+        var len3 = ret[1];
+        if (ret[3]) {
+            ptr3 = 0; len3 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred4_0 = ptr3;
+        deferred4_1 = len3;
+        return getStringFromWasm0(ptr3, len3);
+    } finally {
+        wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
+ * Makes a payout stamp proof from a UFVK or UIVK, the transaction, and the exit's account and order index.
+ * @param {string} tx_hex
+ * @param {string} viewing_key
+ * @param {number} account
+ * @param {number} index
+ * @returns {string}
+ */
+export function make_payout(tx_hex, viewing_key, account, index) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const ptr0 = passStringToWasm0(tx_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(viewing_key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.make_payout(ptr0, len0, ptr1, len1, account, index);
         var ptr3 = ret[0];
         var len3 = ret[1];
         if (ret[3]) {

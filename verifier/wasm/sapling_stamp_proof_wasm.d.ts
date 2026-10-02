@@ -10,6 +10,14 @@
 export function check(tx_hex: string, proof: string, params_json: string, spent_values: string): string;
 
 /**
+ * Checks a payout stamp proof (`splg-proof:2`, SPEC.md §10.5) against the transaction and the parameter file
+ * (JSON text, which names the published exit keys); returns what it shows, what was checked and what was
+ * not, as JSON. `spent_values` as for `check`: without them the order address's signatures and the
+ * receipt's bridged amount are NOT verified, and the result says so.
+ */
+export function check_payout(tx_hex: string, proof: string, params_json: string, spent_values: string): string;
+
+/**
  * The transaction as the stamp rules read it, as JSON (txid computed here).
  */
 export function inspect(tx_hex: string): string;
@@ -19,13 +27,20 @@ export function inspect(tx_hex: string): string;
  */
 export function make(tx_hex: string, viewing_key: string): string;
 
+/**
+ * Makes a payout stamp proof from a UFVK or UIVK, the transaction, and the exit's account and order index.
+ */
+export function make_payout(tx_hex: string, viewing_key: string, account: number, index: number): string;
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly check: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
+    readonly check_payout: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
     readonly inspect: (a: number, b: number) => [number, number, number, number];
     readonly make: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+    readonly make_payout: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly rustsecp256k1_v0_10_0_context_create: (a: number) => number;
     readonly rustsecp256k1_v0_10_0_context_destroy: (a: number) => void;
     readonly rustsecp256k1_v0_10_0_default_error_callback_fn: (a: number, b: number) => void;

@@ -1,9 +1,10 @@
 /**
  * Reads Solana transactions in the JSON shape of `getTransaction` (encoding "json",
- * maxSupportedTransactionVersion 0), and classifies them as stamp requests (SPEC.md §2) or refunds (§5).
+ * maxSupportedTransactionVersion 0), and classifies them as stamp requests (SPEC.md §2), refunds (§5) or exit requests (§10.2).
  */
 import { base58, base64 } from "@scure/base";
 import { PRIVATE_MEMO_PREFIX, parsePrivateMemo } from "../private.ts";
+import { EXIT_MEMO_PREFIX, parseExitMemo } from "../payout.ts";
 import { MEMO_PROGRAM, REDEEMED_EVENT_DISCRIMINATOR, REDEEM_DISCRIMINATOR, REFUND_MEMO_PREFIX, REQUEST_MEMO_PREFIX, requiredFee, type Params } from "../params.ts";
 
 export interface RpcInstruction {
@@ -173,4 +174,45 @@ export function classify(tx: RpcTransaction, p: Params): Classified {
   const need = requiredFee(p.fees, tx.blockTime);
   if (need === null || f.amount < need) return { kind: "other", reason: `R5: fee ${f.amount} is below the required ${need}` };
   return { kind: "request", request: { signature, slot: tx.slot, blockTime: tx.blockTime, mint, holder, source, burned, harvested, feePaid: f.amount, ...request } };
+}
+
+/** A shielded exit's Solana transaction (SPEC.md §10.2): the request a payout stamp answers. */
+export interface ExitRequest {
+  signature: string;
+  slot: number;
+  blockTime: number;
+  /** the wallet that signed and sent the exit (account #0, the authority of its ZEC transfer) */
+  holder: string;
+  /** zatoshi sent to the bridge: the receipt's `sent` */
+  sent: bigint;
+  /** where the ZEC went on Solana (the bridge's deposit account); informational */
+  destination: string;
+  kid: number;
+  /** the order index: its address is the exit key's child `0/<index>` */
+  index: number;
+  sealed: string;
+}
+export type ClassifiedExit = { kind: "exit"; exit: ExitRequest } | { kind: "other"; reason: string };
+
+/**
+ * An exit request (SPEC.md §10.2): finalized and successful (E1); exactly one top-level memo, `sapling-exit:1:…`
+ * (E2); exactly one top-level ZEC `TransferChecked` whose authority is the transaction's first signer (E3).
+ */
+export function classifyExit(tx: RpcTransaction, p: Params): ClassifiedExit {
+  if (!tx.meta || tx.meta.err !== null) return { kind: "other", reason: "E1: failed or has no status" };
+  if (tx.blockTime === null) return { kind: "other", reason: "E1: no block time" };
+  const ixs = topLevel(tx);
+  const memos = ixs.filter((i) => i.programId === MEMO_PROGRAM);
+  if (memos.length !== 1) return { kind: "other", reason: `E2: ${memos.length} memo instructions` };
+  const text = memoText(memos[0]!);
+  if (text === null || !text.startsWith(EXIT_MEMO_PREFIX)) return { kind: "other", reason: "E2: the memo is not an exit memo" };
+  const m = parseExitMemo(text);
+  if ("error" in m) return { kind: "other", reason: m.error };
+  const holder = tx.transaction.message.accountKeys[0] ?? "";
+  const zec = ixs.map((i) => transferChecked(i, p.solana.tokenProgram)).filter((t): t is Transfer => t !== null && t.mint === p.solana.zecMint);
+  if (zec.length !== 1) return { kind: "other", reason: `E3: ${zec.length} ZEC transfers` };
+  const t = zec[0]!;
+  if (t.authority !== holder) return { kind: "other", reason: "E3: the ZEC transfer's authority is not the transaction's signer" };
+  if (t.amount === 0n) return { kind: "other", reason: "E3: the ZEC transfer is empty" };
+  return { kind: "exit", exit: { signature: tx.transaction.signatures[0] ?? "", slot: tx.slot, blockTime: tx.blockTime, holder, sent: t.amount, destination: t.destination, kid: m.kid, index: m.index, sealed: m.sealed } };
 }

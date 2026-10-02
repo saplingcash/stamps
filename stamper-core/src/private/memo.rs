@@ -40,7 +40,7 @@ pub struct Receipt {
     pub block_time: i64,
 }
 
-mod u64_string {
+pub(crate) mod u64_string {
     use serde::{Deserialize, Deserializer, Serializer};
     pub fn serialize<S: Serializer>(v: &u64, s: S) -> Result<S::Ok, S::Error> {
         s.serialize_str(&v.to_string())

@@ -9,5 +9,7 @@ pub mod build;
 pub mod key;
 #[cfg(feature = "proof")]
 pub mod private;
+#[cfg(feature = "proof")]
+pub mod payout;
 pub mod record;
 pub mod tx;
