@@ -15,6 +15,13 @@ else. The specification calls them *private stamps* (SPEC.md §9), as do the rec
 harvested, cites the Solana transaction, and sends 546 zatoshi to the transparent Zcash address the
 harvester chose.
 
+**Payout stamps** (SPEC.md §10) record a payout to Zcash: a sale, a harvest or a send that pays ZEC out
+of Sapling into a shielded address. The payout's own note is the stamp, with a receipt (`SPLG/3`) in its
+memo, and the transaction names the payout in its OP_RETURN (the version 3 record); there is no other note
+and no stamp fee. The ZEC reaches Sapling at an order address derived from a published exit key, so anyone
+can check which payments into the shielded pool were payouts, and the receiver can show theirs with a
+payout stamp proof (`splg-proof:2`).
+
 ## A live example
 
 The first shielded stamp on mainnet:
@@ -51,12 +58,20 @@ the stamp without showing where it went. `stamper-core`'s `private` feature buil
 librustzcash's transaction builder). Making a stamp proof needs the receiving wallet's viewing key, which
 not every wallet can export yet; the stamp is delivered either way.
 
+**Payout stamps** (SPEC.md §10): the exit keys are in `params/mainnet.json` (`zcash.exitKeys`); the order
+address of a payout is the exit key's BIP32 child `0/<order index>`, and the index is in the payout's Solana
+memo (`sapling-exit:1:…`). The rules count the payout transactions spent from those addresses; the proof
+shows one note, its value and its receipt, and checks the receipt against the Solana payout.
+`test-vectors/payout.json` holds a synthetic forward with its proofs and Sapling's first payout transactions
+on mainnet (their notes can only be proved with the receivers' viewing keys).
+
 Checking a proof against both chains (mined, issuer, shape, note, receipt, and the receipt's amounts
-against the Solana harvest):
+against the Solana harvest or payout):
 
 ```bash
 cd verifier
 npx tsx src/cli.ts check-proof --params ../params/mainnet.json --solana <Solana RPC URL> --zcash <Zebra JSON-RPC URL> --proof splg-proof:1:…
+npx tsx src/cli.ts check-proof --params ../params/mainnet.json --solana <Solana RPC URL> --zcash <Zebra JSON-RPC URL> --proof splg-proof:2:…
 ```
 
 Offline, with only the transaction's bytes and the parameter file. A txid does not cover signatures, so
@@ -71,6 +86,8 @@ cannot see (the issuer key's validity period, the Solana harvest). For a verdict
 cd stamper-core
 cargo run --release --features proof --bin stamp-proof -- check --tx <file with the raw tx hex> --params ../params/mainnet.json --proof splg-proof:1:… --spent-values <zat,…>
 cargo run --release --features proof --bin stamp-proof -- make --tx <file> --params ../params/mainnet.json --viewing-key-file <file with a uview… or uivk…>
+cargo run --release --features proof --bin stamp-proof -- check --tx <file> --params ../params/mainnet.json --proof splg-proof:2:… --spent-values <zat,…>
+cargo run --release --features proof --bin stamp-proof -- make --payout --index <order index> --tx <file> --params ../params/mainnet.json --viewing-key-file <file>
 ```
 
 A viewing key is read from a file, never from the command line, and the tool has no network code.
@@ -103,7 +120,8 @@ npx tsx src/cli.ts --params ../params/mainnet.json --solana <Solana RPC URL> --z
 The Zcash node must serve the zcashd-compatible methods `getblockcount`, `getaddresstxids`,
 `getrawtransaction` and `getblock` (Zebra does). The tool only reads; it exits 0 when the invariant
 holds, 1 when it does not, and 2 on an error (bad arguments, an unusable parameter file, or a chain that
-could not be read). Amounts are printed in ZEC; `--json` prints the full result, amounts in base units.
+could not be read). With `--exits <file>` (the payouts' Solana signatures, one per line) it also
+rebuilds the payout stamps from the order addresses of the published exit keys. Amounts are printed in ZEC; `--json` prints the full result, amounts in base units.
 `--help` lists the options.
 
 ## Tests
@@ -125,7 +143,8 @@ verifier checks a stamp that `stamper-core` built and signed.
 
 Version 1. The rules were tested on Zcash testnet and a local Solana validator running the real programs,
 and reviewed independently. `params/mainnet.json` names the mainnet fee account, its owner, the issuer
-and the request key for shielded stamps. Public and shielded stamps both run on mainnet.
+the request key for shielded stamps, and the exit keys of payout stamps. Public and shielded stamps both run
+on mainnet; payout stamps are the notes of the payouts already made on mainnet.
 
 ## License
 
