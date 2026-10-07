@@ -40,7 +40,7 @@ fn a_swapped_scriptsig_with_the_same_txid_is_refused_or_flagged() {
     let config = BuildConfig::Standard { sapling_anchor: None, orchard_anchor: None, ironwood_anchor: Some(orchard::Anchor::empty_tree()), orchard_padding: BundlePadding::DEFAULT, ironwood_padding: BundlePadding::DEFAULT };
     let mut b = Builder::new(TestNetwork, BlockHeight::from_u32(4_400_000), config).with_expiry_height(BlockHeight::from_u32(4_400_040));
     let mut signing = TransparentSigningSet::new();
-    let pk = signing.add_key(secp256k1::SecretKey::from_slice(forger.secret_bytes().as_ref()).unwrap());
+    let pk = signing.add_key(secp256k1::SecretKey::from_secret_bytes(*forger.secret_bytes()).unwrap());
     let forger_addr = TransparentAddress::PublicKeyHash(forger.pubkey_hash());
     let issuer_addr = TransparentAddress::PublicKeyHash(issuer.pubkey_hash());
     b.add_transparent_p2pkh_input(pk, OutPoint::new(crate::common::label("tests/coin"), 0), TxOut::new(Zatoshis::from_u64(21_100).unwrap(), forger_addr.script().into())).unwrap();
@@ -48,7 +48,7 @@ fn a_swapped_scriptsig_with_the_same_txid_is_refused_or_flagged() {
     b.add_transparent_output(&issuer_addr, Zatoshis::from_u64(21_100 - 20_000 - 546).unwrap()).unwrap();
     b.add_ironwood_output::<std::convert::Infallible>(None, receiver, Zatoshis::from_u64(546).unwrap(), MemoBytes::from_bytes(&victim_receipt().memo().unwrap()).unwrap()).unwrap();
     let rule = FeeRule::non_standard(Zatoshis::from_u64(5_000).unwrap(), 2, 150, 34).unwrap();
-    let res = b.build(&signing, &[], &[], rand_core::OsRng, &NoSapling, &NoSapling, &rule).unwrap();
+    let res = b.build(&signing, &[], &[], rand_core::UnwrapErr(rand::rngs::SysRng), &NoSapling, &NoSapling, &rule).unwrap();
     let mut real = Vec::new();
     res.transaction().write(&mut real).unwrap();
     let real_txid = *res.transaction().txid().as_ref();

@@ -15,7 +15,7 @@ pub struct IssuerKey {
 
 impl IssuerKey {
     pub fn generate() -> Self {
-        IssuerKey { key: SigningKey::random(&mut rand_core::OsRng) }
+        IssuerKey { key: SigningKey::random(&mut rand_core_06::OsRng) }
     }
 
     pub fn from_bytes(b: &[u8; 32]) -> Result<Self, String> {

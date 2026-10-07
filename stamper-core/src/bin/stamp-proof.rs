@@ -68,6 +68,8 @@ fn spent_values(args: &[String]) -> Result<Option<Vec<u64>>, String> {
 
 fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
+    // NU7: the pinned mainnet height and librustzcash must agree before anything is signed or read (src/nu7.rs)
+    stamper_core::nu7::check()?;
     let payout_proof = opt(&args, "--proof").is_some_and(|p| p.trim().starts_with(payout::PREFIX));
     match args.get(1).map(String::as_str).unwrap_or("") {
         "make" if args.iter().any(|a| a == "--payout") => {
@@ -129,14 +131,14 @@ fn run() -> Result<(), String> {
             }
             let sk = loop {
                 let mut b = [0u8; 32];
-                rand_core::RngCore::fill_bytes(&mut rand_core::OsRng, &mut b);
+                rand_core_06::RngCore::fill_bytes(&mut rand_core_06::OsRng, &mut b);
                 if let Some(sk) = Option::<orchard::keys::SpendingKey>::from(orchard::keys::SpendingKey::from_bytes(b)) {
                     break sk;
                 }
             };
             let fvk = orchard::keys::FullViewingKey::from(&sk as &orchard::keys::SpendingKey);
             let addr = fvk.address_at(0u32, orchard::keys::Scope::External).to_raw_address_bytes();
-            let ufvk = unified::Ufvk::try_from_items(vec![unified::Fvk::Orchard(fvk.to_bytes())]).map_err(|e| e.to_string())?.encode(&NetworkType::Test);
+            let ufvk = unified::Ufvk::try_from_items(unified::Revision::R0, vec![unified::Uitem::Data(unified::Fvk::Orchard(fvk.to_bytes()))]).map_err(|e| e.to_string())?.encode(&NetworkType::Test);
             let mut opts = fs::OpenOptions::new();
             opts.write(true).create_new(true);
             #[cfg(unix)]
@@ -144,7 +146,7 @@ fn run() -> Result<(), String> {
                 use std::os::unix::fs::OpenOptionsExt;
                 opts.mode(0o600);
             }
-            let uivk = unified::Uivk::try_from_items(vec![unified::Ivk::Orchard(fvk.to_ivk(orchard::keys::Scope::External).to_bytes())]).map_err(|e| e.to_string())?.encode(&NetworkType::Test);
+            let uivk = unified::Uivk::try_from_items(unified::Revision::R0, vec![unified::Uitem::Data(unified::Ivk::Orchard(fvk.to_ivk(orchard::keys::Scope::External).to_bytes()))]).map_err(|e| e.to_string())?.encode(&NetworkType::Test);
             use std::io::Write;
             opts.open(&out).and_then(|mut f| f.write_all(format!("{ufvk}\n").as_bytes())).map_err(|e| e.to_string())?;
             let uivk_path = PathBuf::from(format!("{}.uivk", out.display()));

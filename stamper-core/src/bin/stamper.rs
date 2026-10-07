@@ -33,6 +33,8 @@ fn network(args: &[String]) -> Result<Network, String> {
 
 fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
+    // NU7: the pinned mainnet height and librustzcash must agree before anything is signed or read (src/nu7.rs)
+    stamper_core::nu7::check()?;
     let cmd = args.get(1).map(String::as_str).unwrap_or("");
     #[cfg(feature = "private")]
     if let Some(done) = private_cmd(cmd, &args)? {

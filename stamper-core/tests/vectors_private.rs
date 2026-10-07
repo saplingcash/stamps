@@ -59,9 +59,9 @@ fn vectors() -> Value {
         let fvk = FullViewingKey::from(&sk);
         let r = fvk.address_at(0u32, Scope::External).to_raw_address_bytes();
         for (net, name) in [(NetworkType::Main, "mainnet"), (NetworkType::Test, "testnet")] {
-            let orchard_only = unified::Address::try_from_items(vec![unified::Receiver::Orchard(r)]).unwrap().encode(&net);
-            let with_t = unified::Address::try_from_items(vec![unified::Receiver::P2pkh(label(&format!("{name}/p2pkh"))), unified::Receiver::Orchard(r)]).unwrap().encode(&net);
-            let sapling_t = unified::Address::try_from_items(vec![unified::Receiver::P2pkh(label(&format!("{name}/p2pkh"))), unified::Receiver::Sapling(label(&format!("{name}/sapling-receiver")))]).unwrap().encode(&net);
+            let orchard_only = unified::Address::try_from_items(unified::Revision::R0, vec![unified::Uitem::Data(unified::Receiver::Orchard(r))]).unwrap().encode(&net);
+            let with_t = unified::Address::try_from_items(unified::Revision::R0, vec![unified::Uitem::Data(unified::Receiver::P2pkh(label(&format!("{name}/p2pkh")))), unified::Uitem::Data(unified::Receiver::Orchard(r))]).unwrap().encode(&net);
+            let sapling_t = unified::Address::try_from_items(unified::Revision::R0, vec![unified::Uitem::Data(unified::Receiver::P2pkh(label(&format!("{name}/p2pkh")))), unified::Uitem::Data(unified::Receiver::Sapling(label(&format!("{name}/sapling-receiver"))))]).unwrap().encode(&net);
             addresses.push(json!({ "network": name, "receiver": hex::encode(r), "orchardOnly": orchard_only, "withTransparent": with_t, "noOrchard": sapling_t }));
         }
     }

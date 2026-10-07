@@ -79,7 +79,7 @@ pub struct RequestKey {
 
 impl RequestKey {
     pub fn generate() -> Self {
-        RequestKey { secret: StaticSecret::random_from_rng(rand_core::OsRng) }
+        RequestKey { secret: StaticSecret::random_from_rng(rand_core_06::OsRng) }
     }
 
     pub fn from_bytes(b: [u8; 32]) -> Self {

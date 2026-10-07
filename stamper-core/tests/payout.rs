@@ -10,7 +10,8 @@
 mod common;
 
 use orchard::keys::{FullViewingKey, Scope};
-use rand_core::OsRng;
+use rand::rngs::SysRng;
+use rand_core::UnwrapErr;
 use serde_json::{json, Value};
 use stamper_core::address::{hash160, p2pkh_address, Network};
 use stamper_core::build::{GRACE_ACTIONS, P2PKH_STANDARD_INPUT_SIZE, P2PKH_STANDARD_OUTPUT_SIZE};
@@ -100,7 +101,7 @@ fn build_forward(seed: &str, exits: &[TestExit]) -> (Vec<u8>, Vec<u64>, Vec<Payo
         b.add_ironwood_output::<std::convert::Infallible>(None, to, Zatoshis::from_u64(r.received).unwrap(), MemoBytes::from_bytes(&r.memo().unwrap()).unwrap()).unwrap();
     }
     let rule = FeeRule::non_standard(Zatoshis::from_u64(MARGINAL).unwrap(), GRACE_ACTIONS as usize, P2PKH_STANDARD_INPUT_SIZE, P2PKH_STANDARD_OUTPUT_SIZE).unwrap();
-    let built = b.build(&signing, &[], &[], OsRng, &NoSapling, &NoSapling, &rule).unwrap();
+    let built = b.build(&signing, &[], &[], UnwrapErr(SysRng), &NoSapling, &NoSapling, &rule).unwrap();
     let mut bytes = Vec::new();
     built.transaction().write(&mut bytes).unwrap();
     (bytes, values, receipts)
@@ -119,7 +120,7 @@ fn order_addresses_are_librustzcash_s_bip44_children() {
         for index in [0u32, 1, 2, 77, 1_000, (1 << 31) - 1] {
             let want = apk.derive_address_pubkey(TransparentKeyScope::EXTERNAL, NonHardenedChildIndex::from_index(index).unwrap()).unwrap().serialize();
             assert_eq!(order_pubkey(&pubkey, index).unwrap(), want);
-            let from_secret = secp256k1::PublicKey::from_secret_key(&secp256k1::Secp256k1::new(), &sk.derive_external_secret_key(NonHardenedChildIndex::from_index(index).unwrap()).unwrap()).serialize();
+            let from_secret = secp256k1::PublicKey::from_secret_key(&sk.derive_external_secret_key(NonHardenedChildIndex::from_index(index).unwrap()).unwrap()).serialize();
             assert_eq!(want, from_secret);
         }
     }

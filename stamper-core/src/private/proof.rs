@@ -358,7 +358,7 @@ pub fn make(tx: &[u8], keys: &[IncomingViewingKey]) -> Result<Proof, String> {
     let t = read_tx(tx)?;
     t.ironwood_bundle().ok_or("the transaction has no Ironwood part")?;
     // the network only matters for encoding addresses, which make() does not do
-    let keys = ViewingKeys { network: NetworkType::Main, incoming: keys.to_vec(), outgoing: vec![] };
+    let keys = ViewingKeys { network: NetworkType::Main, incoming: keys.to_vec(), outgoing: vec![], sapling_incoming: vec![], sapling_outgoing: vec![] };
     let found = zcash_delivery_proof::make(tx, &keys).map_err(|e| e.to_string())?;
     let p = found
         .into_iter()

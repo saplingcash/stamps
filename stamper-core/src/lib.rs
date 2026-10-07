@@ -7,6 +7,7 @@
 pub mod address;
 pub mod build;
 pub mod key;
+pub mod nu7;
 #[cfg(feature = "proof")]
 pub mod private;
 #[cfg(feature = "proof")]

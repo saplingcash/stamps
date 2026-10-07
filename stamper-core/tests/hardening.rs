@@ -80,7 +80,7 @@ fn a_note_other_than_the_postage_fails_check() {
     let config = BuildConfig::Standard { sapling_anchor: None, orchard_anchor: None, ironwood_anchor: Some(orchard::Anchor::empty_tree()), orchard_padding: BundlePadding::DEFAULT, ironwood_padding: BundlePadding::DEFAULT };
     let mut b = Builder::new(TestNetwork, height, config).with_expiry_height(BlockHeight::from_u32(4_400_040));
     let mut signing = TransparentSigningSet::new();
-    let pubkey = signing.add_key(secp256k1::SecretKey::from_slice(key.secret_bytes().as_ref()).unwrap());
+    let pubkey = signing.add_key(secp256k1::SecretKey::from_secret_bytes(*key.secret_bytes()).unwrap());
     let addr = TransparentAddress::PublicKeyHash(key.pubkey_hash());
     let coin = TxOut::new(Zatoshis::from_u64(205_460).unwrap(), addr.script().into());
     b.add_transparent_p2pkh_input(pubkey, OutPoint::new(crate::common::label("tests/coin"), 0), coin).unwrap();
@@ -90,7 +90,7 @@ fn a_note_other_than_the_postage_fails_check() {
     let memo = MemoBytes::from_bytes(&victim_receipt().memo().unwrap()).unwrap();
     b.add_ironwood_output::<std::convert::Infallible>(None, orchard::Address::from_raw_address_bytes(&receiver).unwrap(), Zatoshis::from_u64(1).unwrap(), memo).unwrap();
     let rule = FeeRule::non_standard(Zatoshis::from_u64(5_000).unwrap(), 2, 150, 34).unwrap();
-    let res = b.build(&signing, &[], &[], rand_core::OsRng, &NoSapling, &NoSapling, &rule).unwrap();
+    let res = b.build(&signing, &[], &[], rand_core::UnwrapErr(rand::rngs::SysRng), &NoSapling, &NoSapling, &rule).unwrap();
     let mut bytes = Vec::new();
     res.transaction().write(&mut bytes).unwrap();
     // make() skips it (value != 546) but a hand-made proof string checks

@@ -11,12 +11,13 @@
 //! transaction, in which it is encrypted.
 
 use base64::Engine;
-use rand_core::{CryptoRng, OsRng, RngCore};
+use rand::rngs::SysRng;
+use rand_core::{CryptoRng, Rng, UnwrapErr};
 use serde::{Deserialize, Serialize};
 use zcash_primitives::transaction::builder::{BuildConfig, Builder, BundlePadding};
 use zcash_primitives::transaction::fees::zip317::FeeRule;
 use zcash_primitives::transaction::TxVersion;
-use zcash_protocol::consensus::{BlockHeight, BranchId, MainNetwork, NetworkType, Parameters, TestNetwork};
+use zcash_protocol::consensus::{BlockHeight, BranchId, NetworkType, Parameters};
 use zcash_protocol::memo::MemoBytes;
 use zcash_protocol::value::Zatoshis;
 use zcash_transparent::address::TransparentAddress;
@@ -101,17 +102,17 @@ fn builder_for<P: Parameters>(params: P, req: &PrivateRequest, anchor: orchard::
 
 /// Builds, proves and signs a private stamp.
 pub fn build_private(issuer: &IssuerKey, request_key: &RequestKey, req: &PrivateRequest) -> Result<Built, String> {
-    build_private_with_rng(issuer, request_key, req, OsRng)
+    build_private_with_rng(issuer, request_key, req, UnwrapErr(SysRng))
 }
 
-pub fn build_private_with_rng<R: RngCore + CryptoRng>(issuer: &IssuerKey, request_key: &RequestKey, req: &PrivateRequest, rng: R) -> Result<Built, String> {
+pub fn build_private_with_rng<R: Rng + CryptoRng>(issuer: &IssuerKey, request_key: &RequestKey, req: &PrivateRequest, rng: R) -> Result<Built, String> {
     match req.network {
-        Network::Mainnet => build_on(MainNetwork, issuer, request_key, req, rng),
-        Network::Testnet => build_on(TestNetwork, issuer, request_key, req, rng),
+        Network::Mainnet => build_on(crate::nu7::mainnet(), issuer, request_key, req, rng),
+        Network::Testnet => build_on(crate::nu7::testnet(), issuer, request_key, req, rng),
     }
 }
 
-fn build_on<P: Parameters + Clone, R: RngCore + CryptoRng>(params: P, issuer: &IssuerKey, request_key: &RequestKey, req: &PrivateRequest, rng: R) -> Result<Built, String> {
+fn build_on<P: Parameters + Clone, R: Rng + CryptoRng>(params: P, issuer: &IssuerKey, request_key: &RequestKey, req: &PrivateRequest, rng: R) -> Result<Built, String> {
     debug_assert!(matches!((req.network, params.network_type()), (Network::Mainnet, NetworkType::Main) | (Network::Testnet, NetworkType::Test)));
     if req.marginal_fee == 0 {
         return Err("marginal fee must be positive".into());
@@ -138,7 +139,8 @@ fn build_on<P: Parameters + Clone, R: RngCore + CryptoRng>(params: P, issuer: &I
     let receiver = open_receiver(request_key, &req.sealed)?;
 
     let mut signing = TransparentSigningSet::new();
-    let sk = secp256k1::SecretKey::from_slice(issuer.secret_bytes().as_ref()).map_err(|_| "the issuer key is not a valid secp256k1 key")?;
+    let sk_bytes: [u8; 32] = issuer.secret_bytes().as_ref().try_into().map_err(|_| "the issuer key is not 32 bytes")?;
+    let sk = secp256k1::SecretKey::from_secret_bytes(sk_bytes).map_err(|_| "the issuer key is not a valid secp256k1 key")?;
     let pubkey = signing.add_key(sk);
     let issuer_addr = TransparentAddress::PublicKeyHash(issuer.pubkey_hash());
     let coin_value = Zatoshis::from_u64(req.input.value).map_err(|_| "bad input value")?;
@@ -198,7 +200,7 @@ impl sapling::prover::SpendProver for NoSapling {
     ) -> Option<sapling::circuit::Spend> {
         None
     }
-    fn create_proof<R: RngCore>(&self, _: sapling::circuit::Spend, _: &mut R) -> Self::Proof {
+    fn create_proof<R: Rng>(&self, _: sapling::circuit::Spend, _: &mut R) -> Self::Proof {
         unreachable!("a private stamp has no Sapling spends")
     }
     fn encode_proof(p: Self::Proof) -> sapling::bundle::GrothProofBytes {
@@ -217,7 +219,7 @@ impl sapling::prover::OutputProver for NoSapling {
     ) -> sapling::circuit::Output {
         unreachable!("a private stamp has no Sapling outputs")
     }
-    fn create_proof<R: RngCore>(&self, _: sapling::circuit::Output, _: &mut R) -> Self::Proof {
+    fn create_proof<R: Rng>(&self, _: sapling::circuit::Output, _: &mut R) -> Self::Proof {
         unreachable!("a private stamp has no Sapling outputs")
     }
     fn encode_proof(p: Self::Proof) -> sapling::bundle::GrothProofBytes {
