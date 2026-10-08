@@ -56,7 +56,10 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y -qq curl ca-certificates git build-essential clang
-          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+          curl -sSfL -o rustup-init https://static.rust-lang.org/rustup/archive/1.29.1/x86_64-unknown-linux-gnu/rustup-init
+          echo "dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71  rustup-init" | sha256sum -c -
+          chmod +x rustup-init
+          ./rustup-init -y --profile minimal --default-toolchain stable
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: wasm-bindgen 0.2.129 (the official release binary)
