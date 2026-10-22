@@ -6,7 +6,7 @@ import { secp256k1 } from "@noble/curves/secp256k1";
 import { bytesToNumberBE } from "@noble/curves/abstract/utils";
 import { hmac } from "@noble/hashes/hmac";
 import { sha256, sha512 } from "@noble/hashes/sha2";
-import { base64urlnopad } from "@scure/base";
+import { base58, base64urlnopad } from "@scure/base";
 import type { ExitKey, Params } from "./params.ts";
 import { RECORD_TAG } from "./record.ts";
 import { hash160 } from "./zcash/tx.ts";
@@ -75,8 +75,43 @@ export function exitKeysAt(p: Params, account: number, height: number): ExitKey[
 }
 
 export function exitHash(sig: Uint8Array): Uint8Array {
-  if (sig.length !== 64) throw new Error("a Solana signature is 64 bytes");
+  if (sig.length !== 64) throw new Error("an exit's id is 64 bytes (a Solana exit's: its signature)");
   return sha256(sig).slice(0, RECORD_V3_HASH_SIZE);
+}
+
+/**
+ * An exit's name (SPEC.md §10.2): a Solana exit's base58 signature (64 bytes), or a Robinhood Chain exit's
+ * `hood:0x<transaction hash, 64 lowercase hex>:<log index>` (the index 0 to 2^32 − 1 in decimal, no leading zeros).
+ * Null for anything else.
+ */
+export function parseExitName(name: string): { chain: "solana"; signature: Uint8Array } | { chain: "robinhood"; txHash: Uint8Array; logIndex: number } | null {
+  const m = /^hood:0x([0-9a-f]{64}):(0|[1-9][0-9]{0,9})$/.exec(name);
+  if (m) {
+    const logIndex = Number(m[2]);
+    if (logIndex > 0xffffffff) return null;
+    return { chain: "robinhood", txHash: Uint8Array.from(m[1]!.match(/../g)!, (b) => parseInt(b, 16)), logIndex };
+  }
+  if (!/^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(name)) return null;
+  try {
+    const signature = base58.decode(name);
+    return signature.length === 64 ? { chain: "solana", signature } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The 64 bytes a version 3 record names an exit by (SPEC.md §10.2, §10.4): a Solana exit's signature; a Robinhood
+ * Chain exit's transaction hash, then its log index as 32 big-endian bytes.
+ */
+export function exitId(name: string): Uint8Array {
+  const e = parseExitName(name);
+  if (!e) throw new Error("not an exit's name (a Solana signature or hood:0x<64 hex>:<log index>)");
+  if (e.chain === "solana") return e.signature;
+  const id = new Uint8Array(64);
+  id.set(e.txHash, 0);
+  new DataView(id.buffer).setUint32(60, e.logIndex, false);
+  return id;
 }
 
 export function encodeRecordV3(sigs: Uint8Array[]): Uint8Array {

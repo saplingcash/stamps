@@ -21,7 +21,7 @@ use zcash_protocol::consensus::NetworkType;
 use super::exit_key::{order_pubkey, parse_account_pubkey, ACCOUNT_PUBKEY_LEN, MAX_INDEX};
 use super::receipt::PayoutReceipt;
 use crate::private::proof::{read_tx, receiver_address, sig};
-use crate::record::{exit_hash, parse_v3_script, solana_signature, RECORD_V3_HASH_LEN};
+use crate::record::{exit_hash, exit_id, parse_v3_script, RECORD_V3_HASH_LEN};
 
 pub const PREFIX: &str = "splg-proof:2:";
 pub const PROOF_LEN: usize = 32 + 1 + 2 + 43 + 8 + 32 + 1 + 4;
@@ -158,7 +158,7 @@ pub struct PayoutShown {
 pub const NOT_CHECKED_OFFLINE: [&str; 3] = [
     "that these bytes are the mined transaction: a txid does not cover signatures, so a mined txid does not vouch for these inputs; compare the wtxid with a node you trust, or use the verifier's check-proof",
     "that the exit key was valid at the transaction's height (the height is not known offline)",
-    "that the receipt's exit is the Solana transaction it names, with this order index, this amount sent and this time (Solana is not read offline)",
+    "that the receipt's exit is the transaction it names on its chain, with this order index, this amount sent and this time (no chain is read offline)",
 ];
 
 /// Said when the inputs' signatures were not verified.
@@ -274,7 +274,7 @@ pub fn check(tx: &[u8], proof: &PayoutProof, network: NetworkType, keys: &[ExitK
     if receipt.received != proof.value {
         return Err("the receipt's received amount is not this note's value".into());
     }
-    let mine = exit_hash(&solana_signature(&receipt.signature)?);
+    let mine = exit_hash(&exit_id(&receipt.signature)?);
     let position = s.hashes.iter().position(|h| *h == mine).ok_or("the receipt's exit is not one the record names")?;
     // the run of inputs for this exit: its key must be the proof's order address under a published key
     let (run_key, order_inputs) = &s.runs[position];

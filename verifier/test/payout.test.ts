@@ -11,7 +11,7 @@ import { base58 } from "@scure/base";
 import { checkParams, type Params } from "../src/params.ts";
 import { buildPayoutLedger, type ZcashTxInfo } from "../src/ledger.ts";
 import { classifyExit, type ExitRequest, type RpcTransaction } from "../src/solana/tx.ts";
-import { encodeRecordV3, orderHash, orderPubkey, parseExitMemo, recordV3Hashes, recordV3Script } from "../src/payout.ts";
+import { encodeRecordV3, exitHash, exitId, orderHash, orderPubkey, parseExitMemo, parseExitName, recordV3Hashes, recordV3Script } from "../src/payout.ts";
 import { checkProof, proofTxid } from "../src/checkproof.ts";
 import { readPayoutCandidates } from "../src/rpc/zebra.ts";
 import { encodeTransparent } from "../src/zcash/address.ts";
@@ -25,6 +25,7 @@ interface Receipt { kind: string; ticker: string | null; mint: string | null; se
 const V = JSON.parse(readFileSync(join(root, "test-vectors/payout.json"), "utf8")) as {
   exitKeys: { account: number; network: "mainnet" | "testnet"; accountPubkey: string; addresses: { index: number; pubkey: string; address: string }[] }[];
   records: { signatures: string[]; record: string; script: string }[];
+  exitIds: { name: string; id: string; hash: string }[];
   synthetic: { accountPubkey: string; txid: string; hex: string; spentValues: string[]; exits: { index: number; signature: string; proof: string; receipt: Receipt; address: string }[] };
   mainnet: { account: number; index: number; orderAddress: string; accountPubkey: string; txid: string; height: number; hex: string; spentValues: string[]; intoPool: string; record: string }[];
 };
@@ -67,6 +68,16 @@ describe("the vectors (test-vectors/payout.json)", () => {
     }
     expect(recordV3Hashes(hexToBytes("6a4c17" + V.records[0]!.record))).toBeNull(); // not the minimal push
     expect(recordV3Hashes(hexToBytes("6a17" + V.records[0]!.record.replace(/^53504c4703/, "53504c4702")))).toBeNull();
+  });
+  it("exit names and the ids a record names them by: a Solana signature and Robinhood Chain logs (§10.2)", () => {
+    expect(V.exitIds.map((e) => parseExitName(e.name)?.chain)).toEqual(["solana", "robinhood", "robinhood", "robinhood"]);
+    for (const e of V.exitIds) {
+      expect(bytesToHex(exitId(e.name))).toBe(e.id);
+      expect(bytesToHex(exitHash(exitId(e.name)))).toBe(e.hash);
+    }
+    const h = "cd".repeat(32);
+    for (const bad of [`hood:0x${h.toUpperCase()}:1`, `hood:0x${h.slice(2)}:1`, `hood:0x${h}:01`, `hood:0x${h}:`, `hood:0x${h}:4294967296`, `hood:${h}:1`, `solana:0x${h}:1`, base58.encode(new Uint8Array(32).fill(9))])
+      expect(parseExitName(bad), bad).toBeNull();
   });
   it("the mainnet parameter file publishes both exit keys, and they are the ones the mainnet forwards spend from", () => {
     expect(checkParams(MAINNET)).toEqual([]);

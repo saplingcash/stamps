@@ -88,6 +88,36 @@ pub fn solana_signature(b58: &str) -> Result<[u8; 64], String> {
     v.as_slice().try_into().map_err(|_| "the harvest signature must be 64 bytes".to_string())
 }
 
+/// A Robinhood Chain exit's name (SPEC.md §10.2): `hood:0x<transaction hash, 64 lowercase hex>:<log index>`.
+pub const HOOD_PREFIX: &str = "hood:";
+
+/// The transaction hash and log index of a Robinhood Chain exit's name (the index in decimal with no leading
+/// zeros), or `None` if `name` is not exactly one.
+pub fn hood_exit(name: &str) -> Option<([u8; 32], u32)> {
+    let (h, n) = name.strip_prefix(HOOD_PREFIX)?.strip_prefix("0x")?.split_once(':')?;
+    if h.len() != 64 || !h.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)) {
+        return None;
+    }
+    if n.is_empty() || n.len() > 10 || !n.bytes().all(|b| b.is_ascii_digit()) || (n.len() > 1 && n.starts_with('0')) {
+        return None;
+    }
+    let hash: [u8; 32] = hex::decode(h).ok()?.try_into().ok()?;
+    Some((hash, n.parse::<u32>().ok()?))
+}
+
+/// The 64 bytes a version 3 record names an exit by (SPEC.md §10.4): a Solana exit's signature; a Robinhood
+/// Chain exit's transaction hash, then its log index as 32 big-endian bytes.
+pub fn exit_id(name: &str) -> Result<[u8; 64], String> {
+    if name.starts_with(HOOD_PREFIX) {
+        let (hash, log) = hood_exit(name).ok_or("the exit's name is not hood:0x<64 hex>:<log index>")?;
+        let mut id = [0u8; 64];
+        id[..32].copy_from_slice(&hash);
+        id[60..].copy_from_slice(&log.to_be_bytes());
+        return Ok(id);
+    }
+    solana_signature(name)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,5 +155,23 @@ mod tests {
         let mut five = four.clone();
         five.extend_from_slice(&[0; 18]);
         assert!(parse_v3(&five).is_none());
+    }
+
+    #[test]
+    fn exit_names_and_their_ids() {
+        let h = "cd".repeat(32);
+        let hood = exit_id(&format!("hood:0x{h}:12")).unwrap();
+        assert_eq!(&hood[..32], &[0xcd; 32]);
+        assert_eq!(&hood[32..60], &[0; 28]);
+        assert_eq!(&hood[60..], &12u32.to_be_bytes());
+        assert_eq!(hood_exit(&format!("hood:0x{h}:0")), Some(([0xcd; 32], 0)));
+        assert_eq!(hood_exit(&format!("hood:0x{h}:4294967295")), Some(([0xcd; 32], u32::MAX)));
+        let sig = bs58::encode([9u8; 64]).into_string();
+        assert_eq!(exit_id(&sig).unwrap(), [9u8; 64]);
+        assert_ne!(exit_hash(&hood), exit_hash(&[9u8; 64]));
+        // anything else is no exit: upper case hex, a short hash, a leading zero, no index, an index past u32, no 0x
+        for bad in [format!("hood:0x{}:12", "CD".repeat(32)), format!("hood:0x{}:1", "cd".repeat(31)), format!("hood:0x{h}:01"), format!("hood:0x{h}:"), format!("hood:0x{h}:4294967296"), format!("hood:{h}:1"), bs58::encode([9u8; 32]).into_string()] {
+            assert!(exit_id(&bad).is_err(), "{bad}");
+        }
     }
 }

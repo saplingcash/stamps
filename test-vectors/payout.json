@@ -217,6 +217,34 @@
         "ticker": null
       },
       "text": "SPLG/3 shielded exit\nfrom send\nsent 0.00400000 ZEC\nbridged 0.00367000 ZEC\nfee 0.00010000 ZEC\nreceived 0.00357000 ZEC\nsolana 4jsffPQuYFzXr9GH6UmLjkeCeDMhRAPjB3WbQPE52sQYGE8hRTpjtJw1aKT6ZZTmRUNMWQvzn3ifr1gehMY9qToA\nat 1970-01-01T00:00:00Z\nsapling.cash/zec/exit/4jsffPQuYFzXr9GH6UmLjkeCeDMhRAPjB3WbQPE52sQYGE8hRTpjtJw1aKT6ZZTmRUNMWQvzn3ifr1gehMY9qToA"
+    },
+    {
+      "receipt": {
+        "blockTime": 1791255535,
+        "bridged": "2960000",
+        "fee": "15000",
+        "kind": "sell",
+        "mint": null,
+        "received": "2945000",
+        "sent": "3000000",
+        "signature": "hood:0xa6ab488266596c70ba2d3969465b2236bc6c9c2e7f7c8290dcb3c9c367874203:7",
+        "ticker": null
+      },
+      "text": "SPLG/3 shielded exit\nfrom sell\nsent 0.03000000 ZEC\nbridged 0.02960000 ZEC\nfee 0.00015000 ZEC\nreceived 0.02945000 ZEC\nrobinhood 0xa6ab488266596c70ba2d3969465b2236bc6c9c2e7f7c8290dcb3c9c367874203:7\nat 2026-10-06T02:58:55Z\nsapling.cash/zec/exit/hood:0xa6ab488266596c70ba2d3969465b2236bc6c9c2e7f7c8290dcb3c9c367874203:7"
+    },
+    {
+      "receipt": {
+        "blockTime": 1792631292,
+        "bridged": "480000",
+        "fee": "10000",
+        "kind": "send",
+        "mint": null,
+        "received": "470000",
+        "sent": "500000",
+        "signature": "hood:0x96f083fc8ab93ff027ba62c018f1bebe17f1058aa96c4d29f8989b3d2534653e:4294967295",
+        "ticker": null
+      },
+      "text": "SPLG/3 shielded exit\nfrom send\nsent 0.00500000 ZEC\nbridged 0.00480000 ZEC\nfee 0.00010000 ZEC\nreceived 0.00470000 ZEC\nrobinhood 0x96f083fc8ab93ff027ba62c018f1bebe17f1058aa96c4d29f8989b3d2534653e:4294967295\nat 2026-10-22T01:08:12Z\nsapling.cash/zec/exit/hood:0x96f083fc8ab93ff027ba62c018f1bebe17f1058aa96c4d29f8989b3d2534653e:4294967295"
     }
   ],
   "records": [
@@ -253,6 +281,28 @@
         "78hBBuqUau8ko9sVhmqG5F5NWt3kLZXAahqYJ9bsAWoZZg7Suo1up4EFFtoHcUYnBD2wTqDMZPaYCsCBeqnQYAk",
         "5cwipqZRtKqWCRMxBVygw3BM6oeHeokC3SwcwNUVDz1dtaWE7xiufLyRYVtfnjDkDsgJigSvt1Exb14e79w9wyzQ"
       ]
+    }
+  ],
+  "exitIds": [
+    {
+      "hash": "d7c96b0318366531f92080f9f3ad8044f827",
+      "id": "feec2348e2da138ef42d125caff1fb5b45995701f8ebc4f5f74306fcc126dbfa9b6a78ed13491f87cd00d26e0f3f8b0c2cd63a7e16fee81bafbaad47530f61ab",
+      "name": "66cMN8VX1ZEndkK78u5xiKhAeyhoJ5Crrfe6qid6UMPox35EhAhucyx3pMkFKBdUAgpLNdjd1pYspovoKLxKXSKc"
+    },
+    {
+      "hash": "277c27b19e370db3a3ab0ff2e46987e7e6ee",
+      "id": "570903f528653215a090acbfa381d61aa1141f70ded2721fb825477fd325fb620000000000000000000000000000000000000000000000000000000000000000",
+      "name": "hood:0x570903f528653215a090acbfa381d61aa1141f70ded2721fb825477fd325fb62:0"
+    },
+    {
+      "hash": "acdc1b0c6248c74da78980a153ec466da94d",
+      "id": "570903f528653215a090acbfa381d61aa1141f70ded2721fb825477fd325fb62000000000000000000000000000000000000000000000000000000000000001f",
+      "name": "hood:0x570903f528653215a090acbfa381d61aa1141f70ded2721fb825477fd325fb62:31"
+    },
+    {
+      "hash": "52449995741b3d9351fca2115fcc0417b6e5",
+      "id": "570903f528653215a090acbfa381d61aa1141f70ded2721fb825477fd325fb6200000000000000000000000000000000000000000000000000000000ffffffff",
+      "name": "hood:0x570903f528653215a090acbfa381d61aa1141f70ded2721fb825477fd325fb62:4294967295"
     }
   ],
   "synthetic": {

@@ -12,10 +12,15 @@
 //! at <block time, ISO 8601 UTC>
 //! sapling.cash/zec/exit/<Solana signature>
 //! ```
+//!
+//! An exit requested on Robinhood Chain (SPEC.md §10.2) is named `hood:0x<transaction hash>:<log index>`: its
+//! seventh line is `robinhood 0x<transaction hash>:<log index>` instead of `solana …`, the link names it whole,
+//! and its source is `sell` or `send` alone (its log names no coin).
 
 use serde::Serialize;
 
 use crate::private::memo::u64_string;
+use crate::record::{hood_exit, HOOD_PREFIX};
 
 pub const HEADER: &str = "SPLG/3 shielded exit";
 pub const MEMO_LEN: usize = 512;
@@ -38,7 +43,7 @@ pub struct PayoutReceipt {
     pub fee: u64,
     #[serde(with = "u64_string")]
     pub received: u64,
-    /// the exit's Solana signature, base58
+    /// the exit's name: its Solana signature (base58), or a Robinhood Chain exit's `hood:0x<hash>:<log index>`
     pub signature: String,
     /// its block time, unix seconds
     pub block_time: i64,
@@ -104,14 +109,25 @@ fn is_base58(s: &str, min: usize, max: usize) -> bool {
 impl PayoutReceipt {
     /// The receipt's text: exactly what the note's memo holds before its zero padding.
     pub fn text(&self) -> Result<String, String> {
-        match (self.kind.as_str(), &self.ticker, &self.mint) {
-            ("sell" | "harvest", Some(t), Some(m)) if is_ticker(t) && is_base58(m, 32, 44) => {}
-            ("send", None, None) => {}
-            _ => return Err("the receipt's source must be sell or harvest with a ticker and mint, or send with neither".into()),
-        }
-        if !is_base58(&self.signature, 64, 90) {
-            return Err("the receipt's signature is not base58".into());
-        }
+        let source = if let Some(rest) = self.signature.strip_prefix(HOOD_PREFIX) {
+            if hood_exit(&self.signature).is_none() {
+                return Err("the receipt's Robinhood Chain exit is not hood:0x<64 hex>:<log index>".into());
+            }
+            if !matches!((self.kind.as_str(), &self.ticker, &self.mint), ("sell" | "send", None, None)) {
+                return Err("a Robinhood Chain exit's receipt is a sell or a send, with no ticker or coin".into());
+            }
+            format!("robinhood {rest}")
+        } else {
+            match (self.kind.as_str(), &self.ticker, &self.mint) {
+                ("sell" | "harvest", Some(t), Some(m)) if is_ticker(t) && is_base58(m, 32, 44) => {}
+                ("send", None, None) => {}
+                _ => return Err("the receipt's source must be sell or harvest with a ticker and mint, or send with neither".into()),
+            }
+            if !is_base58(&self.signature, 64, 90) {
+                return Err("the receipt's signature is not base58".into());
+            }
+            format!("solana {}", self.signature)
+        };
         if self.block_time < 0 {
             return Err("the receipt's time is before 1970".into());
         }
@@ -123,12 +139,11 @@ impl PayoutReceipt {
             _ => self.kind.clone(),
         };
         let t = format!(
-            "{HEADER}\nfrom {from}\nsent {} ZEC\nbridged {} ZEC\nfee {} ZEC\nreceived {} ZEC\nsolana {}\nat {}\n{LINK}{}",
+            "{HEADER}\nfrom {from}\nsent {} ZEC\nbridged {} ZEC\nfee {} ZEC\nreceived {} ZEC\n{source}\nat {}\n{LINK}{}",
             decimal(self.sent),
             decimal(self.bridged),
             decimal(self.fee),
             decimal(self.received),
-            self.signature,
             iso(self.block_time),
             self.signature
         );
@@ -174,7 +189,11 @@ impl PayoutReceipt {
             bridged: zec(3, "bridged ")?,
             fee: zec(4, "fee ")?,
             received: zec(5, "received ")?,
-            signature: field(6, "solana ")?.to_string(),
+            signature: match (lines[6].strip_prefix("solana "), lines[6].strip_prefix("robinhood ")) {
+                (Some(s), _) => s.to_string(),
+                (_, Some(h)) => format!("{HOOD_PREFIX}{h}"),
+                _ => return Err(bad()),
+            },
             block_time: parse_iso(field(7, "at ")?).ok_or_else(bad)?,
         };
         if r.text().map_err(|_| bad())? != text {
@@ -228,6 +247,31 @@ mod tests {
         memo[511] = 1;
         assert!(PayoutReceipt::parse(&memo).is_err());
         assert!(PayoutReceipt::parse(b"SPLG/2 private stamp").is_err());
+    }
+
+    #[test]
+    fn a_robinhood_chain_exit_names_its_transaction_and_log() {
+        let h = "cd".repeat(32);
+        for (name, line) in [(format!("hood:0x{h}:12"), format!("robinhood 0x{h}:12")), (format!("hood:0x{h}:0"), format!("robinhood 0x{h}:0"))] {
+            for kind in ["sell", "send"] {
+                let rec = PayoutReceipt { kind: kind.into(), ticker: None, mint: None, signature: name.clone(), ..r("send") };
+                let t = rec.text().unwrap();
+                assert!(t.contains(&format!("\n{line}\n")) && !t.contains("\nsolana "), "{t}");
+                assert!(t.ends_with(&format!("\nsapling.cash/zec/exit/{name}")));
+                assert!(t.starts_with(&format!("SPLG/3 shielded exit\nfrom {kind}\n")));
+                assert_eq!(PayoutReceipt::parse(&rec.memo().unwrap()).unwrap(), rec);
+            }
+            // a coin, a harvest, upper case hex: never written, so never read
+            assert!(PayoutReceipt { signature: name.clone(), ..r("sell") }.text().is_err());
+            assert!(PayoutReceipt { kind: "harvest".into(), ticker: None, mint: None, signature: name.clone(), ..r("send") }.text().is_err());
+            assert!(PayoutReceipt { signature: name.to_uppercase().replacen("HOOD:0X", "hood:0x", 1), ..r("send") }.text().is_err());
+        }
+        // the line must agree with the link: another log index on the line is not a receipt
+        let rec = PayoutReceipt { signature: format!("hood:0x{h}:12"), ..r("send") };
+        let swapped = rec.text().unwrap().replace(&format!("\nrobinhood 0x{h}:12\n"), &format!("\nrobinhood 0x{h}:13\n"));
+        let mut memo = [0u8; MEMO_LEN];
+        memo[..swapped.len()].copy_from_slice(swapped.as_bytes());
+        assert!(PayoutReceipt::parse(&memo).is_err());
     }
 
     #[test]

@@ -372,6 +372,12 @@ wallet and its order. Whether a seal opens is known only to Sapling; these rules
 A Zcash account's exit (exit key account 1) is requested through the account's own programs, not by an exit memo
 in its transaction; only its payout stamp proof (§10.5) is defined here.
 
+An exit requested on Robinhood Chain is a log of the account's contract, named by its transaction hash (32 bytes,
+written as `0x` and 64 lowercase hex digits) and its log index (0 to 2^32 − 1 in decimal, with no leading zeros):
+`hood:0x<hash>:<log index>` (exit key account 3). A Solana exit is named by its signature. An exit's **id** is the
+64 bytes a record names it by: a Solana exit's `sig`; a Robinhood Chain exit's hash, then its log index as 32
+big-endian bytes. As for account 1, only its payout stamp proof is defined here.
+
 ### 10.3 The receipt
 
 The note's memo (512 bytes, ZIP 302) is UTF-8 text, zero-padded, of exactly nine lines separated by `\n`:
@@ -388,6 +394,9 @@ at <the exit's block time, ISO 8601 UTC, YYYY-MM-DDTHH:MM:SSZ>
 sapling.cash/zec/exit/<the exit's signature, base58>
 ```
 
+A Robinhood Chain exit writes its seventh line as `robinhood 0x<hash>:<log index>`, its last line as
+`sapling.cash/zec/exit/<the exit's name>` (§10.2), and its source as `from sell` or `from send`, naming no coin.
+
 A sale or a harvest names its coin (the ticker is 1 to 10 characters `A`–`Z` and `0`–`9`); a send names none.
 Amounts are written in full, with no separators, so they parse back exactly. The longest receipt is 450 bytes.
 A memo that differs from this form in any byte is not a receipt.
@@ -400,7 +409,7 @@ The **version 3 record** names the exits a transaction pays, `k` of them (1 ≤ 
 |---|---|---|
 | 0 | 4 | tag `53 50 4c 47` (`SPLG`) |
 | 4 | 1 | version `03` |
-| 5 | 18 × k | `sha256(sig)[0..18]` of each exit, in order |
+| 5 | 18 × k | `sha256(id)[0..18]` of each exit's id (§10.2; a Solana exit's id is its `sig`), in order |
 
 One exit is 23 bytes, four are 77. The script is `6a` and the record as one minimal push: `6a <len> <record>` for
 23, 41 or 59 bytes, `6a 4c 4d <record>` for 77.
@@ -417,7 +426,7 @@ A **payout stamp candidate** is a Zcash transaction `Z` that meets Z1 (§3) and:
 
 `Z` is a **valid payout stamp** of each exit it names if:
 
-1. **V1.** Each hash of the record is `sha256(sig)[0..18]` of exactly one exit request.
+1. **V1.** Each hash of the record is `sha256(id)[0..18]` of exactly one exit request.
 2. **V2.** The key of run `j` is the order key (§10.1) of exit `j`'s index under an exit key of account 0 valid at
    `Z`'s height.
 3. **V4.** No exit it names has a valid payout stamp earlier in chain order (as V4 of §6).
@@ -448,7 +457,7 @@ It is checked without any key:
 2. in action `action` of its Ironwood bundle, the note (`receiver`, `value`, `rho` = the action's nullifier,
    `rseed`) is rebuilt; it has the action's note commitment, and the action's encrypted note decrypts, with the
    `esk` derived from `rseed` (ZIP 212) and the receiver's `pk_d`, to exactly this note: this yields the memo;
-3. the memo is a receipt (§10.3), its `received` is `value`, and its exit's `sha256(sig)[0..18]` is hash `j` of the
+3. the memo is a receipt (§10.3), its `received` is `value`, and its exit's `sha256(id)[0..18]` is hash `j` of the
    record;
 4. the key of run `j` is order `index`'s key under a published exit key of `account`, valid at the transaction's
    height;
