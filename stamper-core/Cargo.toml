@@ -34,9 +34,9 @@ rand = { version = "0.10", default-features = false, features = ["sys_rng"], opt
 rand_core_06 = { package = "rand_core", version = "0.6", features = ["getrandom"] }
 zeroize = "1"
 # the private stamp path (feature `private`): Ironwood outputs, built by librustzcash itself
-zcash_primitives = { version = "=0.31.0-pre.1", optional = true, default-features = false, features = ["std"] }
-zcash_protocol = { version = "=0.11.0-pre.0", optional = true }
-zcash_transparent = { version = "=0.11.0-pre.1", optional = true }
+zcash_primitives = { version = "0.31", optional = true, default-features = false, features = ["std"] }
+zcash_protocol = { version = "0.11", optional = true }
+zcash_transparent = { version = "0.11", optional = true }
 orchard = { version = "0.16", optional = true, default-features = false, features = ["std"] }
 zcash_note_encryption = { version = "0.5", optional = true }
 secp256k1 = { version = "0.33", optional = true }
@@ -44,12 +44,12 @@ x25519-dalek = { version = "2", optional = true, features = ["static_secrets"] }
 hkdf = { version = "0.12", optional = true }
 chacha20poly1305 = { version = "0.10", optional = true }
 base64 = { version = "0.22", optional = true }
-zcash_address = { version = "=0.14.0-pre.1", optional = true }
+zcash_address = { version = "0.14", optional = true }
 zcash_script = { version = "0.6", optional = true, default-features = false }
 # the delivery proof itself (checking a note against the transaction, finding notes with a viewing key)
 # BIP32 public derivation of the exits' order keys (payout stamps)
 hmac = { version = "0.12", optional = true }
-zcash-delivery-proof = { git = "https://github.com/saplingcash/zcash-delivery-proof", rev = "f706b8075869dccf95207f39784fe5a4c6dcca5e", optional = true }
+zcash-delivery-proof = { git = "https://github.com/saplingcash/zcash-delivery-proof", rev = "a3494ab556c68609ea762e3094f85cdaa1d4678f", optional = true }
 # only for the (never called) Sapling prover the builder's signature asks for
 sapling = { package = "sapling-crypto", version = "0.9", optional = true, default-features = false }
 jubjub = { version = "0.11", optional = true }
@@ -64,9 +64,9 @@ private = ["proof", "dep:rand", "dep:secp256k1", "dep:x25519-dalek", "dep:hkdf",
 [dev-dependencies]
 zip32 = "0.3"
 # the reference implementation, used only as a test oracle for txids and signature hashes
-zcash_primitives = "=0.31.0-pre.1"
-zcash_protocol = "=0.11.0-pre.0"
-zcash_transparent = "=0.11.0-pre.1"
+zcash_primitives = "0.31"
+zcash_protocol = "0.11"
+zcash_transparent = "0.11"
 zcash_script = { version = "0.6", default-features = false }
 sapling = { package = "sapling-crypto", version = "0.9", default-features = false }
 orchard = { version = "0.16", default-features = false }

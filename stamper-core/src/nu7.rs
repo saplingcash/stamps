@@ -9,8 +9,8 @@
 //! build loudly, in the branch compare each builder does against the node's branch, instead of signing
 //! under a guessed branch.
 
-/// Mainnet's NU7 activation height. Empty until Zcash sets it (2026-10-20); then the number, nothing else.
-pub const NU7_MAINNET_ACTIVATION: Option<u32> = None;
+/// Mainnet's NU7 activation height: 3,543,405 (ZIP 259; Zebra 7.0.0; zcash_protocol 0.11.0, set 2026-10-21).
+pub const NU7_MAINNET_ACTIVATION: Option<u32> = Some(3_543_405);
 
 /// NU7's consensus branch id (ZIP 259).
 pub const NU7_BRANCH_ID: u32 = 0x7719_0AD9;

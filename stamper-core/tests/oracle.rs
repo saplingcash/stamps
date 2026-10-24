@@ -15,8 +15,7 @@ use stamper_core::tx::{OutPoint, SpentCoin, Tx, TxIn, TxOut};
 use transparent_oracle::*;
 
 mod transparent_oracle {
-    pub use zcash_primitives::transaction::sighash::{signature_hash, SignableInput};
-    pub use zcash_primitives::transaction::txid::TxIdDigester;
+    pub use zcash_primitives::transaction::sighash::{PrecomputedSighashData, SignableInput};
     pub use zcash_primitives::transaction::{Authorization, Transaction, TransactionData};
     pub use zcash_protocol::consensus::BranchId;
     pub use zcash_protocol::value::Zatoshis;
@@ -65,13 +64,13 @@ fn oracle(bytes: &[u8], branch: BranchId, spent: &[SpentCoin]) -> ([u8; 32], Vec
     };
     let bundle = Bundle { vin: b.vin.iter().map(|i| ZTxIn::from_parts(i.prevout().clone(), i.script_sig().clone(), i.sequence())).collect(), vout: b.vout.clone(), authorization: ctx };
     let tdata: TransactionData<Auth> = TransactionData::from_parts(data.version(), data.consensus_branch_id(), data.lock_time(), data.expiry_height(), Some(bundle), None, None, None);
-    let parts = tdata.digest(TxIdDigester);
-    let tb = tdata.transparent_bundle().unwrap();
+    let pre = PrecomputedSighashData::new(tdata);
+    let tb = pre.tx().transparent_bundle().unwrap();
     let mut sighashes = Vec::new();
     for i in 0..spent.len() {
         let spk = &tb.authorization.scripts[i];
         let input = SignableInput::Transparent(zcash_transparent::sighash::SignableInput::from_parts(tb, SighashType::ALL, i, spk, spk, tb.authorization.amounts[i]).unwrap());
-        sighashes.push(*signature_hash(&tdata, &input, &parts).as_ref());
+        sighashes.push(*pre.signature_hash(&input).as_ref());
     }
     (txid, sighashes)
 }

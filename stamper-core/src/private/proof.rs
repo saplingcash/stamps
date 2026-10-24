@@ -126,8 +126,7 @@ pub fn issuers_from_params(json: &str) -> Result<(NetworkType, Vec<[u8; 20]>), S
 }
 
 pub(crate) mod sig {
-    use zcash_primitives::transaction::sighash::{signature_hash, SignableInput};
-    use zcash_primitives::transaction::txid::TxIdDigester;
+    use zcash_primitives::transaction::sighash::{PrecomputedSighashData, SignableInput};
     use zcash_primitives::transaction::{Authorization, Transaction, TransactionData};
     use zcash_protocol::value::Zatoshis;
     use zcash_transparent::address::Script;
@@ -184,15 +183,16 @@ pub(crate) mod sig {
         let spent = Spent { amounts: amounts.clone(), scripts: scripts.clone() };
         let bundle = Bundle { vin: tb.vin.iter().map(|i| TxIn::from_parts(i.prevout().clone(), i.script_sig().clone(), i.sequence())).collect(), vout: tb.vout.clone(), authorization: spent };
         let data: TransactionData<WithSpent> = t.clone().into_data().map_bundles(|_| Some(bundle), |s| s, |o| o);
-        let parts = data.digest(TxIdDigester);
-        let tbw = data.transparent_bundle().expect("set above");
+        // zcash_primitives 0.31: the digests are computed once, the signature hash per input from them
+        let pre = PrecomputedSighashData::new(data);
+        let tbw = pre.tx().transparent_bundle().expect("set above");
         for (i, (sig, key)) in keys.iter().enumerate() {
             let (der, ht) = sig.split_at(sig.len().checked_sub(1).ok_or("an empty signature")?);
             if ht != [0x01] {
                 return Err("an input's signature is not SIGHASH_ALL".into());
             }
             let input = zcash_transparent::sighash::SignableInput::from_parts(tbw, SighashType::ALL, i, &scripts[i], &scripts[i], amounts[i]).map_err(|_| "cannot form the signature hash")?;
-            let digest = signature_hash(&data, &SignableInput::Transparent(input), &parts);
+            let digest = pre.signature_hash(&SignableInput::Transparent(input));
             use k256::ecdsa::signature::hazmat::PrehashVerifier;
             let vk = k256::ecdsa::VerifyingKey::from_sec1_bytes(key).map_err(|_| "an input's public key is not valid")?;
             let s = k256::ecdsa::Signature::from_der(der).map_err(|_| "an input's signature is not DER")?;
