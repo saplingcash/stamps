@@ -1746,7 +1746,7 @@ dependencies = [
 [[package]]
 name = "zcash-delivery-proof"
 version = "0.3.0"
-source = "git+https://github.com/saplingcash/zcash-delivery-proof?rev=f706b8075869dccf95207f39784fe5a4c6dcca5e#f706b8075869dccf95207f39784fe5a4c6dcca5e"
+source = "git+https://github.com/saplingcash/zcash-delivery-proof?rev=d0013b4dfcc2777aeee1cf5b786ff6816c7d280f#d0013b4dfcc2777aeee1cf5b786ff6816c7d280f"
 dependencies = [
  "base64",
  "hex",
@@ -1762,9 +1762,9 @@ dependencies = [
 
 [[package]]
 name = "zcash_address"
-version = "0.14.0-pre.1"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db56348a60fb82895c37475a4a3a39e9eaf47bc4267c05cad42f83b0771b18c8"
+checksum = "372023d82d978ab3f27b8e9f7f9b56fc61f3c9cc2b72ec2f8e3bbb278497e474"
 dependencies = [
  "bech32",
  "bs58",
@@ -1800,9 +1800,9 @@ dependencies = [
 
 [[package]]
 name = "zcash_primitives"
-version = "0.31.0-pre.1"
+version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0329bee4107df1aaaaaab365bdf94fcc0d9a185165c4675dff2397c5af7d13f4"
+checksum = "50ad9ffda3d83c35e401b2f914980762f201ab40525cb0aab67b8d91e180e7df"
 dependencies = [
  "blake2b_simd",
  "corez",
@@ -1829,9 +1829,9 @@ dependencies = [
 
 [[package]]
 name = "zcash_protocol"
-version = "0.11.0-pre.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98aeb25d9f741670fd63f9dbf76bca87d87c4fd32e1a7469bc4c43c4d0af09f7"
+checksum = "266da226b6be42545b9fc299f1def9f5e525764845b8afa874f167155de943ba"
 dependencies = [
  "corez",
  "document-features",
@@ -1868,9 +1868,9 @@ dependencies = [
 
 [[package]]
 name = "zcash_transparent"
-version = "0.11.0-pre.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3b7dfde65266233ad2babba2f115d41a786e0270cac1a4644e26b9992dcf375"
+checksum = "eb804d0179500e9543502dd6dfa178826617107897e6fe171241e5b767b7a0dd"
 dependencies = [
  "bip32",
  "bs58",
@@ -1883,7 +1883,6 @@ dependencies = [
  "secp256k1",
  "sha2 0.10.9",
  "subtle",
- "zcash_address",
  "zcash_encoding",
  "zcash_protocol",
  "zcash_script",

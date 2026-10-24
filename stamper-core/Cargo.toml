@@ -49,7 +49,7 @@ zcash_script = { version = "0.6", optional = true, default-features = false }
 # the delivery proof itself (checking a note against the transaction, finding notes with a viewing key)
 # BIP32 public derivation of the exits' order keys (payout stamps)
 hmac = { version = "0.12", optional = true }
-zcash-delivery-proof = { git = "https://github.com/saplingcash/zcash-delivery-proof", rev = "a3494ab556c68609ea762e3094f85cdaa1d4678f", optional = true }
+zcash-delivery-proof = { git = "https://github.com/saplingcash/zcash-delivery-proof", rev = "d0013b4dfcc2777aeee1cf5b786ff6816c7d280f", optional = true }
 # only for the (never called) Sapling prover the builder's signature asks for
 sapling = { package = "sapling-crypto", version = "0.9", optional = true, default-features = false }
 jubjub = { version = "0.11", optional = true }
