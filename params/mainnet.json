@@ -34,6 +34,11 @@
         "account": 1,
         "pubkey": "29768824dfc70b2055cdc455003be2ac4b7e54a7a76f0fb4b4817f8aa58fb47103e4042b70f0991afcd9efff5240e55c23035c3343b7fbe04f718e2e3fa82dac60",
         "fromHeight": 3502865
+      },
+      {
+        "account": 3,
+        "pubkey": "3fa750fb8217cc2144c0060c4ca64c23f8788f23f12f142295ac53e794c482fd0236d497b47ca529e91b5a476bf7a290f967ce9bec75b4c96f3446c17118b529d2",
+        "fromHeight": 3527000
       }
     ]
   },

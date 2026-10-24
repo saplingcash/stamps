@@ -18,7 +18,7 @@ use stamper_core::payout::exit_key::{order_hash, order_pubkey};
 use stamper_core::payout::proof::{check, exit_keys_from_params, make, shape, verify_inputs, ExitKey, PayoutProof};
 use stamper_core::payout::receipt::PayoutReceipt;
 use stamper_core::private::build::NoSapling;
-use stamper_core::record::{exit_hash, record_v3, record_v3_script};
+use stamper_core::record::{exit_hash, exit_id, record_v3, record_v3_script};
 use zcash_primitives::transaction::builder::{BuildConfig, Builder, BundlePadding};
 use zcash_primitives::transaction::fees::zip317::FeeRule;
 use zcash_protocol::consensus::{BlockHeight, NetworkType, TestNetwork};
@@ -56,6 +56,9 @@ struct TestExit {
     kind: &'static str,
     sent: u64,
     signature: [u8; 64],
+    /// a Robinhood Chain exit's name (`hood:0x…:<log>`): the record names it by its id, the receipt by its name;
+    /// `None`, a Solana exit named by `signature`
+    name: Option<String>,
 }
 
 /// A forward of `exits` from exit account 0 of `seed`, built as Sapling's exiter builds one. Returns the
@@ -78,7 +81,7 @@ fn build_forward(seed: &str, exits: &[TestExit]) -> (Vec<u8>, Vec<u64>, Vec<Payo
         }
         let bridged: u64 = e.coins.iter().sum();
         let fee = MARGINAL * (e.coins.len() as u64 + 1 + u64::from(single));
-        let coin = e.kind != "send";
+        let coin = e.kind != "send" && e.name.is_none();
         receipts.push(PayoutReceipt {
             kind: e.kind.into(),
             ticker: coin.then(|| "ROOT".into()),
@@ -87,11 +90,11 @@ fn build_forward(seed: &str, exits: &[TestExit]) -> (Vec<u8>, Vec<u64>, Vec<Payo
             bridged,
             fee,
             received: bridged - fee,
-            signature: bs58::encode(e.signature).into_string(),
+            signature: e.name.clone().unwrap_or_else(|| bs58::encode(e.signature).into_string()),
             block_time: 1_790_640_000,
         });
     }
-    b.add_transparent_null_data_output::<std::convert::Infallible>(&record_v3(&exits.iter().map(|e| e.signature).collect::<Vec<_>>()).unwrap()).unwrap();
+    b.add_transparent_null_data_output::<std::convert::Infallible>(&record_v3(&exits.iter().map(|e| e.name.as_deref().map_or(e.signature, |n| exit_id(n).unwrap())).collect::<Vec<_>>()).unwrap()).unwrap();
     for (e, r) in exits.iter().zip(&receipts) {
         let to = Option::from(orchard::Address::from_raw_address_bytes(&e.receiver)).unwrap();
         b.add_ironwood_output::<std::convert::Infallible>(None, to, Zatoshis::from_u64(r.received).unwrap(), MemoBytes::from_bytes(&r.memo().unwrap()).unwrap()).unwrap();
@@ -129,8 +132,8 @@ fn a_forward_of_two_exits_proves_each_note() {
     let (fvk_a, to_a) = wallet(1);
     let (fvk_b, to_b) = wallet(2);
     let exits = [
-        TestExit { index: 7, coins: vec![300_000], receiver: to_a, kind: "sell", sent: 330_000, signature: label("tests/payout/exit/7") },
-        TestExit { index: 9, coins: vec![120_000, 80_000], receiver: to_b, kind: "send", sent: 220_000, signature: label("tests/payout/exit/9") },
+        TestExit { index: 7, coins: vec![300_000], receiver: to_a, kind: "sell", sent: 330_000, signature: label("tests/payout/exit/7"), name: None },
+        TestExit { index: 9, coins: vec![120_000, 80_000], receiver: to_b, kind: "send", sent: 220_000, signature: label("tests/payout/exit/9"), name: None },
     ];
     let (tx, values, receipts) = build_forward(seed, &exits);
     let s = shape(&tx).unwrap();
@@ -181,6 +184,42 @@ fn a_forward_of_two_exits_proves_each_note() {
     assert!(make(&tx, &[wallet(3).0.to_ivk(Scope::External)], 0, 7).is_err());
 }
 
+/// A forward paying a Solana exit and two Robinhood Chain exits of one transaction (SPEC.md §10.2): the record names
+/// each by its 64-byte id, each Robinhood receipt names its transaction and log, and each note proves as a Solana
+/// exit's does.
+#[test]
+fn a_forward_with_robinhood_chain_exits_proves_each_note() {
+    let seed = "tests/payout/exit-seed";
+    let pubkey = exit_key(seed, 0);
+    let (fvk_a, to_a) = wallet(4);
+    let (fvk_b, to_b) = wallet(5);
+    let (fvk_c, to_c) = wallet(6);
+    let hash = hex::encode(label::<32>("tests/payout/robinhood-transaction"));
+    let exits = [
+        TestExit { index: 11, coins: vec![250_000], receiver: to_a, kind: "sell", sent: 260_000, signature: [0; 64], name: Some(format!("hood:0x{hash}:3")) },
+        TestExit { index: 12, coins: vec![90_000, 60_000], receiver: to_b, kind: "send", sent: 160_000, signature: [0; 64], name: Some(format!("hood:0x{hash}:4")) },
+        TestExit { index: 13, coins: vec![120_000], receiver: to_c, kind: "sell", sent: 130_000, signature: label("tests/payout/exit/13"), name: None },
+    ];
+    let (tx, values, receipts) = build_forward(seed, &exits);
+    let ids: Vec<[u8; 64]> = exits.iter().map(|e| e.name.as_deref().map_or(e.signature, |n| exit_id(n).unwrap())).collect();
+    assert_ne!(ids[0], ids[1]);
+    assert_eq!(shape(&tx).unwrap().hashes, ids.iter().map(exit_hash).collect::<Vec<_>>());
+    for (n, (fvk, e)) in [(fvk_a, &exits[0]), (fvk_b, &exits[1]), (fvk_c, &exits[2])].into_iter().enumerate() {
+        let proof = make(&tx, &[fvk.to_ivk(Scope::External)], 0, e.index).unwrap();
+        let shown = check(&tx, &proof, NetworkType::Test, &keys(pubkey), Some(&values)).unwrap();
+        assert_eq!(shown.receipt, receipts[n]);
+        assert_eq!((shown.exits, shown.position), (3, n));
+        let text = receipts[n].text().unwrap();
+        match &e.name {
+            Some(name) => {
+                assert_eq!(&shown.receipt.signature, name);
+                assert!(text.contains(&format!("\nrobinhood 0x{hash}:{}\n", 3 + n)) && text.ends_with(&format!("sapling.cash/zec/exit/{name}")), "{text}");
+            }
+            None => assert!(text.contains("\nsolana ")),
+        }
+    }
+}
+
 // ---- the vectors
 
 const FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../test-vectors/payout.json");
@@ -208,11 +247,22 @@ fn computed() -> Value {
         PayoutReceipt { kind: "sell".into(), ticker: Some("ROOT".into()), mint: Some(bs58::encode(label::<32>("vectors/payout/receipt/0/mint")).into_string()), sent: 1_000_000, bridged: 968_000, fee: 15_000, received: 953_000, signature: bs58::encode(label::<64>("vectors/payout/receipt/0/signature")).into_string(), block_time: 1_790_640_000 },
         PayoutReceipt { kind: "harvest".into(), ticker: Some("ABCDEFGHIJ".into()), mint: Some(bs58::encode([0xffu8; 32]).into_string()), sent: u64::MAX, bridged: u64::MAX, fee: u64::MAX, received: 0, signature: bs58::encode([0xffu8; 64]).into_string(), block_time: 253_402_300_799 },
         PayoutReceipt { kind: "send".into(), ticker: None, mint: None, sent: 400_000, bridged: 367_000, fee: 10_000, received: 357_000, signature: bs58::encode(label::<64>("vectors/payout/receipt/2/signature")).into_string(), block_time: 0 },
+        PayoutReceipt { kind: "sell".into(), ticker: None, mint: None, sent: 3_000_000, bridged: 2_960_000, fee: 15_000, received: 2_945_000, signature: format!("hood:0x{}:7", hex::encode(label::<32>("vectors/payout/receipt/3/transaction"))), block_time: 1_791_255_535 },
+        PayoutReceipt { kind: "send".into(), ticker: None, mint: None, sent: 500_000, bridged: 480_000, fee: 10_000, received: 470_000, signature: format!("hood:0x{}:4294967295", hex::encode(label::<32>("vectors/payout/receipt/4/transaction"))), block_time: 1_792_631_292 },
     ]
     .into_iter()
     .map(|r| json!({ "receipt": r, "text": r.text().unwrap() }))
     .collect();
-    json!({ "exitKeys": keys, "records": records, "receipts": receipts })
+    // an exit's name, the 64 bytes a version 3 record names it by (SPEC.md §10.4), and that record's hash
+    let tx = hex::encode(label::<32>("vectors/payout/exit-id/transaction"));
+    let exit_ids: Vec<Value> = [bs58::encode(label::<64>("vectors/payout/exit-id/signature")).into_string(), format!("hood:0x{tx}:0"), format!("hood:0x{tx}:31"), format!("hood:0x{tx}:4294967295")]
+        .iter()
+        .map(|n| {
+            let id = exit_id(n).unwrap();
+            json!({ "name": n, "id": hex::encode(id), "hash": hex::encode(exit_hash(&id)) })
+        })
+        .collect();
+    json!({ "exitKeys": keys, "records": records, "receipts": receipts, "exitIds": exit_ids })
 }
 
 fn on_disk() -> Value {
@@ -223,7 +273,7 @@ fn on_disk() -> Value {
 fn the_computed_vectors_match() {
     let disk = on_disk();
     let want = computed();
-    for k in ["exitKeys", "records", "receipts"] {
+    for k in ["exitKeys", "records", "receipts", "exitIds"] {
         assert_eq!(disk[k], want[k], "{k}");
     }
 }
@@ -284,8 +334,8 @@ fn regenerate() {
     let seed = "vectors/payout/synthetic/exit-seed";
     let pubkey = exit_key(seed, 0);
     let exits = [
-        TestExit { index: 12, coins: vec![468_000], receiver: wallet(21).1, kind: "sell", sent: 500_000, signature: label("vectors/payout/synthetic/exit/12") },
-        TestExit { index: 13, coins: vec![200_000, 167_000], receiver: wallet(22).1, kind: "send", sent: 400_000, signature: label("vectors/payout/synthetic/exit/13") },
+        TestExit { index: 12, coins: vec![468_000], receiver: wallet(21).1, kind: "sell", sent: 500_000, signature: label("vectors/payout/synthetic/exit/12"), name: None },
+        TestExit { index: 13, coins: vec![200_000, 167_000], receiver: wallet(22).1, kind: "send", sent: 400_000, signature: label("vectors/payout/synthetic/exit/13"), name: None },
     ];
     let (tx, values, receipts) = build_forward(seed, &exits);
     let mut out = Vec::new();
